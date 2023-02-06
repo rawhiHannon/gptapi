@@ -46,8 +46,8 @@ func (g *GPTClient) init() {
 	g.temperature = 0
 }
 
-func (g *GPTClient) SetPrompt(prompt string, history []string) {
-	g.prompt = models.NewPrompt(prompt)
+func (g *GPTClient) SetPrompt(prompt models.Prompt, history []string) {
+	g.prompt = prompt
 	if history != nil {
 		g.history = history
 	} else {

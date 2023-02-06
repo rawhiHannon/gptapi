@@ -1,9 +1,8 @@
-package websockets
+package wsserver
 
 import (
 	"encoding/json"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,24 +34,21 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	conn        *websocket.Conn
-	wsServer    *WsServer
-	send        chan []byte
-	ID          uuid.UUID `json:"id"`
-	rooms       map[*Room]bool
-	liveSources map[string]bool
+	conn     *websocket.Conn
+	wsServer *WsServer
+	send     chan []byte
+	ID       uuid.UUID `json:"id"`
+	rooms    map[*Room]bool
 }
 
 func NewClient(conn *websocket.Conn, wsServer *WsServer) *Client {
 	return &Client{
-		ID:          uuid.New(),
-		conn:        conn,
-		wsServer:    wsServer,
-		send:        make(chan []byte, 256),
-		rooms:       make(map[*Room]bool),
-		liveSources: make(map[string]bool),
+		ID:       uuid.New(),
+		conn:     conn,
+		wsServer: wsServer,
+		send:     make(chan []byte, 256),
+		rooms:    make(map[*Room]bool),
 	}
-
 }
 
 func (c *Client) readPump() {
@@ -145,13 +141,7 @@ func (c *Client) handleNewMessage(jsonMessage []byte) {
 
 func (c *Client) handleJoinRoomMessage(message Message) {
 	roomName := message.Message
-	data := message.Data
-	if data != "" {
-		liveSourcesArr := strings.Split(data, ",")
-		for i := 0; i < len(liveSourcesArr); i++ {
-			c.liveSources[liveSourcesArr[i]] = true
-		}
-	}
+	// data := message.Data
 	c.joinRoom(roomName, nil)
 }
 
@@ -176,13 +166,6 @@ func (c *Client) joinRoom(roomName string, sender *Client) {
 		c.rooms[room] = true
 		room.registerClient(c)
 	}
-}
-
-func (c *Client) hasSource(key string) bool {
-	if _, ok := c.liveSources[key]; ok {
-		return true
-	}
-	return false
 }
 
 func (c *Client) isInRoom(room *Room) bool {

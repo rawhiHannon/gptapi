@@ -1,7 +1,7 @@
 package httpserver
 
 import (
-	websockets "gptapi/internal/ws"
+	"gptapi/internal/wsserver"
 	"gptapi/pkg/utils"
 	"net/http"
 	"strings"
@@ -14,7 +14,7 @@ type HttpServer struct {
 	actions  map[string]utils.HttpHandler
 	router   *mux.Router
 	api      *mux.Router
-	wsServer *websockets.WsServer
+	wsServer *wsserver.WsServer
 }
 
 func NewHttpServer() *HttpServer {
@@ -32,7 +32,7 @@ func (this *HttpServer) init() {
 }
 
 func (this *HttpServer) initWebSocketsServer() {
-	this.wsServer = websockets.NewWebsocketServer()
+	this.wsServer = wsserver.NewWebsocketServer()
 
 	this.api.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		this.wsServer.ServeWs(w, r)
