@@ -3,7 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
-	"gptapi/internal/gpt"
+	"gptapi/internal/openai/gpt"
 	"os"
 )
 

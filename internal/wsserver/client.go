@@ -34,10 +34,10 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
+	ID       uuid.UUID `json:"id"`
 	conn     *websocket.Conn
 	wsServer *WsServer
 	send     chan []byte
-	ID       uuid.UUID `json:"id"`
 	rooms    map[*Room]bool
 }
 
@@ -70,7 +70,6 @@ func (c *Client) readPump() {
 		}
 		c.handleNewMessage(jsonMessage)
 	}
-
 }
 
 func (c *Client) writePump() {

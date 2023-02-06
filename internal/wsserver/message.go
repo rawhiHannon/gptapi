@@ -11,6 +11,7 @@ const JoinRoomAction = "join-room"
 const LeaveRoomAction = "leave-room"
 
 type Message struct {
+	Id      string  `json:"id"`
 	Action  string  `json:"action"`
 	Message string  `json:"message"`
 	Data    string  `json:"data"`
