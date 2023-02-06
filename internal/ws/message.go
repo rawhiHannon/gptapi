@@ -1,0 +1,48 @@
+package websockets
+
+import (
+	"encoding/json"
+	"log"
+)
+
+const SendStreamAction = "stream"
+const SendEventAction = "event"
+const JoinRoomAction = "join-room"
+const LeaveRoomAction = "leave-room"
+
+type Message struct {
+	Action  string  `json:"action"`
+	Message string  `json:"message"`
+	Data    string  `json:"data"`
+	Target  *Room   `json:"target"`
+	Sender  *Client `json:"sender"`
+}
+
+func NewStreamMessage(room *Room, message string) *Message {
+	messageObj := &Message{
+		Action:  SendStreamAction,
+		Message: message,
+		Target:  room,
+		Sender:  nil,
+	}
+	return messageObj
+}
+
+func NewEventMessage(room *Room, message string) *Message {
+	messageObj := &Message{
+		Action:  SendEventAction,
+		Message: message,
+		Target:  room,
+		Sender:  nil,
+	}
+	return messageObj
+}
+
+func (message *Message) encode() []byte {
+	json, err := json.Marshal(message)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return json
+}
