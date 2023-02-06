@@ -15,8 +15,8 @@ func main() {
 
 	switch os.Args[1] {
 	case "nlp":
-		shardCmd := commands.CreateNLPCommand(os.Args[2:])
-		shardCmd.Run()
+		nlpCmd := commands.CreateNLPCommand(os.Args[2:])
+		nlpCmd.Run()
 	default:
 		fmt.Println(fmt.Sprintf(`gpt-cli: %s command not recognized`, os.Args[1]))
 		os.Exit(1)
