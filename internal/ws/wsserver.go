@@ -26,34 +26,71 @@ func NewWebsocketServer() *WsServer {
 	}
 }
 
-func (server *WsServer) Run() {
+func (s *WsServer) registerClient(client *Client) {
+	s.clients[client] = true
+}
+
+func (s *WsServer) unregisterClient(client *Client) {
+	if _, ok := s.clients[client]; ok {
+		delete(s.clients, client)
+	}
+}
+
+func (s *WsServer) broadcastToClients(message []byte) {
+	for client := range s.clients {
+		client.send <- message
+	}
+}
+
+func (s *WsServer) findRoomByName(name string) *Room {
+	s.roomsLock.RLock()
+	defer s.roomsLock.RUnlock()
+	foundRoom := s.rooms[name]
+	return foundRoom
+}
+
+func (s *WsServer) findRoomByID(ID string) *Room {
+	s.roomsLock.RLock()
+	defer s.roomsLock.RUnlock()
+
+	var foundRoom *Room
+	for _, room := range s.rooms {
+		if room.GetId() == ID {
+			foundRoom = room
+			break
+		}
+	}
+	return foundRoom
+}
+
+func (s *WsServer) Run() {
 	for {
 		select {
-		case client := <-server.register:
-			server.registerClient(client)
-		case client := <-server.unregister:
-			server.unregisterClient(client)
-		case message := <-server.broadcast:
-			server.broadcastToClients(message)
+		case client := <-s.register:
+			s.registerClient(client)
+		case client := <-s.unregister:
+			s.unregisterClient(client)
+		case message := <-s.broadcast:
+			s.broadcastToClients(message)
 		}
 	}
 }
 
-func (this *WsServer) ServeWs(w http.ResponseWriter, r *http.Request) {
+func (s *WsServer) ServeWs(w http.ResponseWriter, r *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	client := NewClient(conn, this)
+	client := NewClient(conn, s)
 	go client.writePump()
 	go client.readPump()
-	this.register <- client
+	s.register <- client
 }
 
-func (server *WsServer) BroadcastStream(key string, roomName string, data string) {
-	room := server.findRoomByName(roomName)
+func (s *WsServer) BroadcastStream(key string, roomName string, data string) {
+	room := s.findRoomByName(roomName)
 	if room == nil {
 		log.Println("no room with the name " + roomName)
 		return
@@ -62,8 +99,8 @@ func (server *WsServer) BroadcastStream(key string, roomName string, data string
 	room.broadcastToAll(key, message)
 }
 
-func (server *WsServer) BroadcastEvent(roomName string, data string) {
-	room := server.findRoomByName(roomName)
+func (s *WsServer) BroadcastEvent(roomName string, data string) {
+	room := s.findRoomByName(roomName)
 	if room == nil {
 		log.Println("no room with the name " + roomName)
 		return
@@ -72,62 +109,25 @@ func (server *WsServer) BroadcastEvent(roomName string, data string) {
 	room.broadcastToAll("", message)
 }
 
-func (server *WsServer) CreateRoom(name string) *Room {
-	server.roomsLock.Lock()
-	defer server.roomsLock.Unlock()
-	if server.rooms[name] != nil {
-		return server.rooms[name]
+func (s *WsServer) CreateRoom(name string) *Room {
+	s.roomsLock.Lock()
+	defer s.roomsLock.Unlock()
+	if s.rooms[name] != nil {
+		return s.rooms[name]
 	}
 	room := NewRoom(name)
-	server.rooms[name] = room
+	s.rooms[name] = room
 	return room
 }
 
-func (server *WsServer) HasRoom(room string) bool {
-	server.roomsLock.RLock()
-	defer server.roomsLock.RUnlock()
+func (s *WsServer) HasRoom(room string) bool {
+	s.roomsLock.RLock()
+	defer s.roomsLock.RUnlock()
 
-	return (server.rooms != nil && server.rooms[room] != nil)
+	return (s.rooms != nil && s.rooms[room] != nil)
 }
 
-func (server *WsServer) RoomHasListeners(key string, roomName string) bool {
-	room := server.findRoomByName(roomName)
+func (s *WsServer) RoomHasListeners(key string, roomName string) bool {
+	room := s.findRoomByName(roomName)
 	return (room != nil && room.HasListeners(key))
-}
-
-func (server *WsServer) registerClient(client *Client) {
-	server.clients[client] = true
-}
-
-func (server *WsServer) unregisterClient(client *Client) {
-	if _, ok := server.clients[client]; ok {
-		delete(server.clients, client)
-	}
-}
-
-func (server *WsServer) broadcastToClients(message []byte) {
-	for client := range server.clients {
-		client.send <- message
-	}
-}
-
-func (server *WsServer) findRoomByName(name string) *Room {
-	server.roomsLock.RLock()
-	defer server.roomsLock.RUnlock()
-	foundRoom := server.rooms[name]
-	return foundRoom
-}
-
-func (server *WsServer) findRoomByID(ID string) *Room {
-	server.roomsLock.RLock()
-	defer server.roomsLock.RUnlock()
-
-	var foundRoom *Room
-	for _, room := range server.rooms {
-		if room.GetId() == ID {
-			foundRoom = room
-			break
-		}
-	}
-	return foundRoom
 }

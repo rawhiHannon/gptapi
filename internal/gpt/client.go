@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"gptapi/pkg/models"
 	"gptapi/pkg/utils"
 
 	"github.com/PullRequestInc/go-gpt3"
@@ -17,7 +18,7 @@ type GPTClient struct {
 	maxTokens   int
 	temperature float32
 	stream      func(string)
-	prompts     string
+	prompt      models.Prompt
 	history     []string
 	ctx         context.Context
 }
@@ -25,6 +26,7 @@ type GPTClient struct {
 func NewGPTClient(ctx context.Context, stream func(string)) *GPTClient {
 	g := &GPTClient{
 		stream:  stream,
+		prompt:  models.NewPrompt(""),
 		history: make([]string, 0),
 		ctx:     ctx,
 	}
@@ -44,8 +46,8 @@ func (g *GPTClient) init() {
 	g.temperature = 0
 }
 
-func (g *GPTClient) SetPrompts(prompts string, history []string) {
-	g.prompts = prompts
+func (g *GPTClient) SetPrompt(prompt string, history []string) {
+	g.prompt = models.NewPrompt(prompt)
 	if history != nil {
 		g.history = history
 	} else {
@@ -60,7 +62,7 @@ func (g *GPTClient) SendText(text string) (response string, err error) {
 		g.engine,
 		gpt3.CompletionRequest{
 			Prompt: []string{
-				fmt.Sprintf(`%s\n%s\n%s`, g.prompts, strings.Join(g.history, "\n"), text),
+				fmt.Sprintf(`%s\n%s\n%s`, g.prompt.Text, strings.Join(g.history, "\n"), text),
 			},
 			MaxTokens:   gpt3.IntPtr(g.maxTokens),
 			Temperature: gpt3.Float32Ptr(g.temperature),

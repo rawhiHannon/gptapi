@@ -55,16 +55,16 @@ func NewClient(conn *websocket.Conn, wsServer *WsServer) *Client {
 
 }
 
-func (client *Client) readPump() {
+func (c *Client) readPump() {
 	defer func() {
-		log.Println("Closing client connection and channels", client.ID)
-		client.disconnect()
+		log.Println("Closing client connection and channels", c.ID)
+		c.disconnect()
 	}()
-	client.conn.SetReadLimit(maxMessageSize)
-	client.conn.SetReadDeadline(time.Now().Add(pongWait))
-	client.conn.SetPongHandler(func(string) error { client.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	c.conn.SetReadLimit(maxMessageSize)
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		_, jsonMessage, err := client.conn.ReadMessage()
+		_, jsonMessage, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Println("unexpected close error", err)
@@ -72,121 +72,121 @@ func (client *Client) readPump() {
 			}
 			break
 		}
-		client.handleNewMessage(jsonMessage)
+		c.handleNewMessage(jsonMessage)
 	}
 
 }
 
-func (client *Client) writePump() {
+func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		client.conn.Close()
+		c.conn.Close()
 	}()
 	for {
 		select {
-		case message, ok := <-client.send:
-			client.conn.SetWriteDeadline(time.Now().Add(writeWait))
+		case message, ok := <-c.send:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				client.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			w, err := client.conn.NextWriter(websocket.TextMessage)
+			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				return
 			}
 			w.Write(message)
-			n := len(client.send)
+			n := len(c.send)
 			for i := 0; i < n; i++ {
 				w.Write(newline)
-				w.Write(<-client.send)
+				w.Write(<-c.send)
 			}
 			if err := w.Close(); err != nil {
 				return
 			}
 		case <-ticker.C:
-			client.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := client.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
 		}
 	}
 }
 
-func (client *Client) disconnect() {
-	client.wsServer.unregister <- client
-	for room := range client.rooms {
-		room.unregisterClient(client)
+func (c *Client) disconnect() {
+	c.wsServer.unregister <- c
+	for room := range c.rooms {
+		room.unregisterClient(c)
 	}
-	close(client.send)
-	client.conn.Close()
+	close(c.send)
+	c.conn.Close()
 }
 
-func (client *Client) handleNewMessage(jsonMessage []byte) {
+func (c *Client) handleNewMessage(jsonMessage []byte) {
 	log.Println(string(jsonMessage))
 	var message Message
 	if err := json.Unmarshal(jsonMessage, &message); err != nil {
 		log.Printf("Error on unmarshal JSON message %s", err)
 		return
 	}
-	message.Sender = client
+	message.Sender = c
 	switch message.Action {
 	case SendStreamAction:
 		roomID := message.Target.GetId()
-		if room := client.wsServer.findRoomByID(roomID); room != nil {
+		if room := c.wsServer.findRoomByID(roomID); room != nil {
 			room.broadcastToAll("", &message)
 		}
 	case JoinRoomAction:
-		client.handleJoinRoomMessage(message)
+		c.handleJoinRoomMessage(message)
 	case LeaveRoomAction:
-		client.handleLeaveRoomMessage(message)
+		c.handleLeaveRoomMessage(message)
 	}
 }
 
-func (client *Client) handleJoinRoomMessage(message Message) {
+func (c *Client) handleJoinRoomMessage(message Message) {
 	roomName := message.Message
 	data := message.Data
 	if data != "" {
 		liveSourcesArr := strings.Split(data, ",")
 		for i := 0; i < len(liveSourcesArr); i++ {
-			client.liveSources[liveSourcesArr[i]] = true
+			c.liveSources[liveSourcesArr[i]] = true
 		}
 	}
-	client.joinRoom(roomName, nil)
+	c.joinRoom(roomName, nil)
 }
 
-func (client *Client) handleLeaveRoomMessage(message Message) {
-	room := client.wsServer.findRoomByName(message.Message)
+func (c *Client) handleLeaveRoomMessage(message Message) {
+	room := c.wsServer.findRoomByName(message.Message)
 	if room == nil {
 		return
 	}
-	if _, ok := client.rooms[room]; ok {
-		delete(client.rooms, room)
+	if _, ok := c.rooms[room]; ok {
+		delete(c.rooms, room)
 	}
-	room.unregisterClient(client)
+	room.unregisterClient(c)
 }
 
-func (client *Client) joinRoom(roomName string, sender *Client) {
-	room := client.wsServer.findRoomByName(roomName)
+func (c *Client) joinRoom(roomName string, sender *Client) {
+	room := c.wsServer.findRoomByName(roomName)
 	if room == nil {
 		log.Println("no rooms with the name " + roomName)
 		return
 	}
-	if !client.isInRoom(room) {
-		client.rooms[room] = true
-		room.registerClient(client)
+	if !c.isInRoom(room) {
+		c.rooms[room] = true
+		room.registerClient(c)
 	}
 }
 
-func (client *Client) hasSource(key string) bool {
-	if _, ok := client.liveSources[key]; ok {
+func (c *Client) hasSource(key string) bool {
+	if _, ok := c.liveSources[key]; ok {
 		return true
 	}
 	return false
 }
 
-func (client *Client) isInRoom(room *Room) bool {
-	if _, ok := client.rooms[room]; ok {
+func (c *Client) isInRoom(room *Room) bool {
+	if _, ok := c.rooms[room]; ok {
 		return true
 	}
 	return false

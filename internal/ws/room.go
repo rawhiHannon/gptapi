@@ -26,61 +26,61 @@ func NewRoom(name string) *Room {
 	}
 }
 
-func (room *Room) registerClient(client *Client) {
-	room.clientsLock.Lock()
-	defer room.clientsLock.Unlock()
-	room.clients[client] = true
+func (r *Room) registerClient(client *Client) {
+	r.clientsLock.Lock()
+	defer r.clientsLock.Unlock()
+	r.clients[client] = true
 	for key := range client.liveSources {
-		if _, exist := room.liveSources[key]; !exist {
-			room.liveSources[key] = 0
+		if _, exist := r.liveSources[key]; !exist {
+			r.liveSources[key] = 0
 		}
-		room.liveSources[key]++
+		r.liveSources[key]++
 	}
 }
 
-func (room *Room) unregisterClient(client *Client) {
-	log.Println("Unregister client from room " + room.GetName())
-	room.clientsLock.Lock()
-	defer room.clientsLock.Unlock()
-	if _, ok := room.clients[client]; ok {
-		delete(room.clients, client)
+func (r *Room) unregisterClient(client *Client) {
+	log.Println("Unregister client from room " + r.GetName())
+	r.clientsLock.Lock()
+	defer r.clientsLock.Unlock()
+	if _, ok := r.clients[client]; ok {
+		delete(r.clients, client)
 	}
 	for key := range client.liveSources {
-		if _, exist := room.liveSources[key]; exist {
-			room.liveSources[key]--
+		if _, exist := r.liveSources[key]; exist {
+			r.liveSources[key]--
 		}
 	}
 	client.liveSources = make(map[string]bool)
 }
 
-func (room *Room) broadcastToAll(key string, message *Message) {
-	room.clientsLock.RLock()
-	defer room.clientsLock.RUnlock()
-	for client := range room.clients {
+func (r *Room) broadcastToAll(key string, message *Message) {
+	r.clientsLock.RLock()
+	defer r.clientsLock.RUnlock()
+	for client := range r.clients {
 		if key == "" || client.hasSource(key) {
 			client.send <- message.encode()
 		}
 	}
 }
 
-func (room *Room) HasListeners(key string) bool {
-	room.clientsLock.RLock()
-	defer room.clientsLock.RUnlock()
-	if len(room.clients) == 0 || room.clients == nil {
+func (r *Room) HasListeners(key string) bool {
+	r.clientsLock.RLock()
+	defer r.clientsLock.RUnlock()
+	if len(r.clients) == 0 || r.clients == nil {
 		return false
 	}
 
-	count, exist := room.liveSources[key]
+	count, exist := r.liveSources[key]
 	if key != "" && (!exist || count == 0) {
 		return false
 	}
 	return true
 }
 
-func (room *Room) GetId() string {
-	return room.ID.String()
+func (r *Room) GetId() string {
+	return r.ID.String()
 }
 
-func (room *Room) GetName() string {
-	return room.Name
+func (r *Room) GetName() string {
+	return r.Name
 }
