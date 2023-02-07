@@ -39,7 +39,7 @@ func (r *Room) unregisterClient(client *Client) {
 	}
 }
 
-func (r *Room) broadcastToAll(key string, message *Message) {
+func (r *Room) broadcastToAll(message *Message) {
 	r.clientsLock.RLock()
 	defer r.clientsLock.RUnlock()
 	for client := range r.clients {
@@ -47,7 +47,7 @@ func (r *Room) broadcastToAll(key string, message *Message) {
 	}
 }
 
-func (r *Room) HasListeners(key string) bool {
+func (r *Room) HasListeners() bool {
 	r.clientsLock.RLock()
 	defer r.clientsLock.RUnlock()
 	if len(r.clients) == 0 || r.clients == nil {

@@ -9,6 +9,8 @@ const SendStreamAction = "stream"
 const SendEventAction = "event"
 const JoinRoomAction = "join-room"
 const LeaveRoomAction = "leave-room"
+const ChatAction = "chat"
+const SettingsAction = "settings"
 
 type Message struct {
 	Id      string  `json:"id"`
@@ -17,6 +19,16 @@ type Message struct {
 	Data    string  `json:"data"`
 	Target  *Room   `json:"target"`
 	Sender  *Client `json:"sender"`
+}
+
+func NewChatMessage(message string) *Message {
+	messageObj := &Message{
+		Action:  ChatAction,
+		Message: message,
+		Target:  nil,
+		Sender:  nil,
+	}
+	return messageObj
 }
 
 func NewStreamMessage(room *Room, message string) *Message {

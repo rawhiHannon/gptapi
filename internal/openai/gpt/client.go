@@ -70,7 +70,7 @@ func (g *GPTClient) SendText(text string) (response string, err error) {
 		func(resp *gpt3.CompletionResponse) {
 			text := resp.Choices[0].Text
 			if g.stream != nil {
-				if text == "\n" {
+				if text == "\n" && sb.Len() == 0 {
 					return
 				}
 				g.stream(text)

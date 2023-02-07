@@ -39,6 +39,10 @@ func (this *HttpServer) initWebSocketsServer() {
 	})
 }
 
+func (h *HttpServer) SetOnClientRegister(handler func(*wsserver.Client)) {
+	h.wsServer.SetOnClientRegister(handler)
+}
+
 func (this *HttpServer) RegisterChannel(channel string) {
 	if this.wsServer.HasRoom(channel) {
 		return
@@ -46,8 +50,12 @@ func (this *HttpServer) RegisterChannel(channel string) {
 	this.wsServer.CreateRoom(channel)
 }
 
-func (this *HttpServer) Broadcast(key string, channel string, data [][]string) {
-	if this.wsServer.RoomHasListeners(key, channel) == false {
+func (h *HttpServer) Send(id string, data string) {
+	h.wsServer.SendMessage(id, data)
+}
+
+func (this *HttpServer) Broadcast(channel string, data [][]string) {
+	if this.wsServer.RoomHasListeners(channel) == false {
 		return
 	}
 	go func() {
@@ -55,12 +63,12 @@ func (this *HttpServer) Broadcast(key string, channel string, data [][]string) {
 		for _, arr := range data {
 			strData = append(strData, strings.Join(arr, " "))
 		}
-		this.wsServer.BroadcastStream(key, channel, strings.Join(strData, "\n"))
+		this.wsServer.BroadcastStream(channel, strings.Join(strData, "\n"))
 	}()
 }
 
 func (this *HttpServer) BroadcastEvent(channel string, data string) {
-	if this.wsServer.RoomHasListeners("", channel) == false {
+	if this.wsServer.RoomHasListeners(channel) == false {
 		return
 	}
 	this.wsServer.BroadcastEvent(channel, data)

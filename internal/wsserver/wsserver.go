@@ -7,22 +7,25 @@ import (
 )
 
 type WsServer struct {
-	clients    map[*Client]bool
-	register   chan *Client
-	unregister chan *Client
-	broadcast  chan []byte
-	rooms      map[string]*Room
-	roomsLock  *sync.RWMutex
+	clients         map[*Client]bool
+	register        chan *Client
+	unregister      chan *Client
+	broadcast       chan []byte
+	rooms           map[string]*Room
+	roomsLock       *sync.RWMutex
+	clientsLock     *sync.RWMutex
+	registerHandler func(*Client)
 }
 
 func NewWebsocketServer() *WsServer {
 	return &WsServer{
-		clients:    make(map[*Client]bool),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		broadcast:  make(chan []byte),
-		rooms:      make(map[string]*Room),
-		roomsLock:  new(sync.RWMutex),
+		clients:     make(map[*Client]bool),
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		broadcast:   make(chan []byte),
+		rooms:       make(map[string]*Room),
+		roomsLock:   new(sync.RWMutex),
+		clientsLock: new(sync.RWMutex),
 	}
 }
 
@@ -40,6 +43,17 @@ func (s *WsServer) broadcastToClients(message []byte) {
 	for client := range s.clients {
 		client.send <- message
 	}
+}
+
+func (s *WsServer) findClient(id string) *Client {
+	s.clientsLock.RLock()
+	defer s.clientsLock.RUnlock()
+	for client := range s.clients {
+		if client.ID.String() == id {
+			return client
+		}
+	}
+	return nil
 }
 
 func (s *WsServer) findRoomByName(name string) *Room {
@@ -68,6 +82,9 @@ func (s *WsServer) Run() {
 		select {
 		case client := <-s.register:
 			s.registerClient(client)
+			if s.registerHandler != nil {
+				s.registerHandler(client)
+			}
 		case client := <-s.unregister:
 			s.unregisterClient(client)
 		case message := <-s.broadcast:
@@ -89,14 +106,28 @@ func (s *WsServer) ServeWs(w http.ResponseWriter, r *http.Request) {
 	s.register <- client
 }
 
-func (s *WsServer) BroadcastStream(key string, roomName string, data string) {
+func (s *WsServer) SetOnClientRegister(handler func(*Client)) {
+	s.registerHandler = handler
+}
+
+func (s *WsServer) SendMessage(id string, data string) {
+	client := s.findClient(id)
+	if client == nil {
+		log.Println("no client with the id " + id)
+		return
+	}
+	message := NewChatMessage(data)
+	client.Send(message)
+}
+
+func (s *WsServer) BroadcastStream(roomName string, data string) {
 	room := s.findRoomByName(roomName)
 	if room == nil {
 		log.Println("no room with the name " + roomName)
 		return
 	}
 	message := NewStreamMessage(room, data)
-	room.broadcastToAll(key, message)
+	room.broadcastToAll(message)
 }
 
 func (s *WsServer) BroadcastEvent(roomName string, data string) {
@@ -106,7 +137,7 @@ func (s *WsServer) BroadcastEvent(roomName string, data string) {
 		return
 	}
 	message := NewEventMessage(room, data)
-	room.broadcastToAll("", message)
+	room.broadcastToAll(message)
 }
 
 func (s *WsServer) CreateRoom(name string) *Room {
@@ -127,7 +158,7 @@ func (s *WsServer) HasRoom(room string) bool {
 	return (s.rooms != nil && s.rooms[room] != nil)
 }
 
-func (s *WsServer) RoomHasListeners(key string, roomName string) bool {
+func (s *WsServer) RoomHasListeners(roomName string) bool {
 	room := s.findRoomByName(roomName)
-	return (room != nil && room.HasListeners(key))
+	return (room != nil && room.HasListeners())
 }
