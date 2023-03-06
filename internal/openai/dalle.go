@@ -1,4 +1,4 @@
-package dalle
+package openai
 
 import (
 	"bytes"
@@ -49,6 +49,7 @@ type DallEReq struct {
 	N              int    `json:"n"`
 	Size           string `json:"size"`
 	ResponseFormat string `json:"response_format"`
+	// Determinism    float32 `json:"determinism"`
 }
 
 type DallEResp struct {
@@ -91,6 +92,7 @@ func (d *DallE) GenPhoto(prompt string, n int, size string) ([]string, error) {
 		N:              n,
 		Size:           size,
 		ResponseFormat: "url",
+		// Determinism:    0.5,
 	}
 
 	postData, _ := json.Marshal(requestBody)

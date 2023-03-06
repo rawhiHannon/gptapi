@@ -1,52 +1,44 @@
-package gpt
+package openai
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
-
-	"gptapi/pkg/models"
-	"gptapi/pkg/utils"
 
 	"github.com/PullRequestInc/go-gpt3"
 )
 
 type GPTClient struct {
+	apiKey      string
 	client      gpt3.Client
 	engine      string
 	maxTokens   int
 	temperature float32
 	stream      func(string)
-	prompt      models.Prompt
+	prompt      string
 	history     []string
 	ctx         context.Context
 }
 
-func NewGPTClient(ctx context.Context, stream func(string)) *GPTClient {
+func NewGPTClient(ctx context.Context, apiKey string, stream func(string)) *GPTClient {
 	g := &GPTClient{
 		stream:  stream,
-		prompt:  models.NewPrompt(""),
 		history: make([]string, 0),
 		ctx:     ctx,
 	}
-	g.init()
+	g.init(apiKey)
 	return g
 }
 
-func (g *GPTClient) init() {
-	utils.LoadEnv("")
-	apiKey, ok := os.LookupEnv("GPT_API_KEY")
-	if !ok {
-		panic("Missing GPT_API_KEY")
-	}
+func (g *GPTClient) init(apiKey string) {
+	g.apiKey = apiKey
 	g.client = gpt3.NewClient(apiKey)
 	g.engine = gpt3.TextDavinci003Engine
 	g.maxTokens = 3000
 	g.temperature = 0
 }
 
-func (g *GPTClient) SetPrompt(prompt models.Prompt, history []string) {
+func (g *GPTClient) SetPrompt(prompt string, history []string) {
 	g.prompt = prompt
 	if history != nil {
 		g.history = history
@@ -62,7 +54,7 @@ func (g *GPTClient) SendText(text string) (response string, err error) {
 		g.engine,
 		gpt3.CompletionRequest{
 			Prompt: []string{
-				fmt.Sprintf(`%s\n%s\n%s`, g.prompt.Text, strings.Join(g.history, "\n"), text),
+				fmt.Sprintf(`%s\n%s\n%s`, g.prompt, strings.Join(g.history, "\n"), text),
 			},
 			MaxTokens:   gpt3.IntPtr(g.maxTokens),
 			Temperature: gpt3.Float32Ptr(g.temperature),

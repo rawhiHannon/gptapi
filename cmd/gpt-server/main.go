@@ -1,31 +1,27 @@
 package main
 
 import (
-	"gptapi/internal/openai/gpt"
+	"gptapi/internal/openai"
 	"gptapi/internal/wsserver"
 	"gptapi/pkg/api/httpserver"
-	"gptapi/pkg/models"
+	"gptapi/pkg/enum"
+	"gptapi/pkg/utils"
 	"log"
 )
 
-const propmt1 = `I want you to answer people's questions as Moses:
-1. any questions not related to stories or events or information about Moses should be answerd with, I'm sorry, I don't know.
-2. you don't know anything about anything apart from Moses history and Moses personality.`
-
-const propmt2 = `you are a math teacher, rules:
-1.any question not related to math you answer with, I know math only :).
-2.ant text wich is not question or an order related to previous questions should be answered with, I only can help with math problems :).`
-
 func main() {
-	manager := gpt.NewGPTManager()
+	utils.LoadEnv("")
+	manager := openai.NewGPTManager()
 	server := httpserver.NewHttpServer()
 	server.SetOnClientRegister(func(c *wsserver.Client) {
-		manager.AddClient(c.ID.String(), nil)
+		manager.AddClient(c.ID.String(), enum.GPT_3_5_TURBO, nil)
 		c.SetOnMessageReceived(func(c *wsserver.Client, m *wsserver.Message) {
 			if m.Action == "ChatAction" {
-
 			}
 			gpt := manager.GetClient(c.ID.String())
+			if gpt == nil {
+				server.Send(c.ID.String(), "You reached max limit")
+			}
 			res, err := gpt.SendText(m.Message)
 			if err != nil {
 				log.Println(err)
@@ -35,10 +31,9 @@ func main() {
 		})
 		c.SetOnSettingsReceived(func(c *wsserver.Client, m *wsserver.Message) {
 			gpt := manager.GetClient(c.ID.String())
-			gpt.SetPrompt(models.NewPrompt(m.Data), nil)
+			gpt.SetPrompt(m.Data, nil)
 		})
 	})
-
 	server.Start("7878")
 	select {}
 }

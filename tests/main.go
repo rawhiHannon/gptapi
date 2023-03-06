@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-	"gptapi/internal/openai/dalle"
-	"os"
+	"gptapi/internal/openai"
 	"time"
 )
 
@@ -19,22 +18,21 @@ func main() {
 	// 	fmt.Println("\n", err)
 	// }
 
-	apiKey := "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"
-	// client := dalle.NewClient(apiKey)
-	// data, err := client.Generate("a horse cartoon play with football", nil, nil, nil, nil)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// fmt.Println(data[0].URL)
+	apiKey := "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"
+	d := openai.NewDallE(apiKey, "rawhi", 10*time.Second)
 
-	image, _ := os.Open("./files/images/cat.jpg")
-	mask, _ := os.Open("./files/images/cat_mask.jpg")
-	d := dalle.NewDallE(apiKey, "rawhi", 10*time.Second)
-	// list, err := d.GenPhoto("a horse cartoon play with football", 1, "512x512")
-	size := dalle.Medium
-	n := 1
-	responseFormat := "b64_json"
-	user := "rawhi"
-	list, err := d.Edit("replace the cat with dog", image, mask, &size, &n, &user, &responseFormat)
+	list, err := d.GenPhoto(`
+	Film still, extreme wide shot of an
+	elephant alone on the savannah,
+	extreme long shot
+	`, 1, "1024x1024")
+
+	// image, _ := os.Open("./files/images/cat.jpg")
+	// mask, _ := os.Open("./files/images/cat_mask.jpg")
+	// size := openai.Medium
+	// n := 1
+	// responseFormat := "b64_json"
+	// user := "rawhi"
+	// list, err := d.Edit("replace the cat with dog", image, mask, &size, &n, &user, &responseFormat)
 	fmt.Println(err, list)
 }

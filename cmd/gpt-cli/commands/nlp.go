@@ -3,7 +3,8 @@ package commands
 import (
 	"context"
 	"fmt"
-	"gptapi/internal/openai/gpt"
+	"gptapi/internal/openai"
+	"gptapi/pkg/utils"
 	"os"
 )
 
@@ -41,8 +42,13 @@ func (s *NLPCommand) ValidateArgs() {
 }
 
 func (s *NLPCommand) Run() {
+	utils.LoadEnv("")
 	s.ValidateArgs()
-	c := gpt.NewGPTClient(context.Background(), func(s string) { fmt.Print(s) })
+	apiKey, ok := os.LookupEnv("GPT_API_KEY")
+	if !ok || len(apiKey) == 0 {
+		fmt.Println("No API Key provided")
+	}
+	c := openai.NewGPTClient(context.Background(), apiKey, func(s string) { fmt.Print(s) })
 	_, err := c.SendText(s.GetText())
 	if err != nil {
 		fmt.Println(err)
