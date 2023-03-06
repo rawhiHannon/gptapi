@@ -133,6 +133,7 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 			break
 		}
 	}
+	log.Println(len(g.history.messages))
 	g.history.AddQuestion(text, answer)
 	return answer, nil
 }

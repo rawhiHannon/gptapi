@@ -41,9 +41,10 @@ func (t *TelegramBot) init(prompt string) {
 }
 
 func (t *TelegramBot) getChat(chatId int64) openai.IGPTClient {
-	client := t.gptManager.GetClient(fmt.Sprintf(`%d`, chatId))
+	strId := fmt.Sprintf(`%d`, chatId)
+	client := t.gptManager.GetClient(strId)
 	if client == nil {
-		client = t.gptManager.AddClient(os.Getenv("GPT_API_KEY"), enum.GPT_3_5_TURBO, 5)
+		client = t.gptManager.AddClient(strId, enum.GPT_3_5_TURBO, 15)
 		client.SetPrompt(t.prompt, nil)
 	}
 	return client
