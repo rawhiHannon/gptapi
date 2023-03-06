@@ -14,6 +14,7 @@ import (
 type TelegramBot struct {
 	gptManager *openai.GPTManager
 	bot        *tbot.Server
+	prompt     string
 }
 
 func NewTelegramBot(prompt string) *TelegramBot {
@@ -34,6 +35,7 @@ func (t *TelegramBot) init(prompt string) {
 	}
 	t.bot = bot
 	t.gptManager = openai.NewGPTManager()
+	t.prompt = prompt
 	bot.HandleFunc("{question}", t.questionHandler)
 	bot.ListenAndServe()
 }
@@ -42,6 +44,7 @@ func (t *TelegramBot) getChat(chatId int64) openai.IGPTClient {
 	client := t.gptManager.GetClient(fmt.Sprintf(`%d`, chatId))
 	if client == nil {
 		client = t.gptManager.AddClient(os.Getenv("GPT_API_KEY"), enum.GPT_3_5_TURBO, 5)
+		client.SetPrompt(t.prompt, nil)
 	}
 	return client
 }
