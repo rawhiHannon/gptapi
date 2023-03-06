@@ -43,13 +43,13 @@ func (m *GPTManager) getApiKey() string {
 	return m.apiKeys[0]
 }
 
-func (m *GPTManager) AddClient(id string, gptType enum.GPTType, stream func(string)) IGPTClient {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *GPTManager) AddClient(id string, gptType enum.GPTType, historySize int) IGPTClient {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if client, exists := m.clients[id]; exists {
 		return client
 	}
-	c := CreateNewGPTClient(m.getApiKey(), gptType, stream)
+	c := CreateNewGPTClient(m.getApiKey(), gptType, historySize)
 	m.clients[id] = c
 	return c
 }

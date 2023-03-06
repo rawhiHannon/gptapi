@@ -5,12 +5,15 @@ import (
 	"gptapi/pkg/enum"
 )
 
-func CreateNewGPTClient(apiKey string, gptType enum.GPTType, stream func(string)) IGPTClient {
+func CreateNewGPTClient(apiKey string, gptType enum.GPTType, historySize int) IGPTClient {
+	if apiKey == "" {
+		return nil
+	}
 	switch gptType {
 	case enum.GPT_3:
-		return NewGPTClient(context.Background(), apiKey, stream)
+		return NewGPTClient(context.Background(), apiKey, nil)
 	case enum.GPT_3_5_TURBO:
-		return NewChatGPTClient(apiKey)
+		return NewCGPTClient(apiKey, historySize)
 	}
 	return nil
 }

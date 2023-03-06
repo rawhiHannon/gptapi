@@ -14,7 +14,7 @@ func main() {
 	manager := openai.NewGPTManager()
 	server := httpserver.NewHttpServer()
 	server.SetOnClientRegister(func(c *wsserver.Client) {
-		manager.AddClient(c.ID.String(), enum.GPT_3_5_TURBO, nil)
+		manager.AddClient(c.ID.String(), enum.GPT_3_5_TURBO, 100)
 		c.SetOnMessageReceived(func(c *wsserver.Client, m *wsserver.Message) {
 			if m.Action == "ChatAction" {
 			}
