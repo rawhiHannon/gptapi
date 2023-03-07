@@ -110,12 +110,17 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 		Role:    "system",
 		Content: g.prompt,
 	}
+	forceMsg := CGPTMessage{
+		Role:    "user",
+		Content: "جاوبني بنفس اللهجة اللي سألت فيها و استعمل نفس المصطلحات",
+	}
 	msg := CGPTMessage{
 		Role:    "user",
 		Content: text,
 	}
 	messages := make([]CGPTMessage, 0)
 	messages = append(messages, systemMsg)
+	messages = append(messages, forceMsg)
 	messages = append(messages, g.history.GetMessages()...)
 	messages = append(messages, msg)
 	requestBody := CGPTRequest{
