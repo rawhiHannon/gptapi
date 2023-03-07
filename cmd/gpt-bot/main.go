@@ -17,6 +17,6 @@ const rule2 = `rules:
 `
 
 func main() {
-	bot := tbot.NewTelegramBot(rule2)
+	bot := tbot.NewTelegramBot(rule2, "Max reached")
 	bot.Start()
 }

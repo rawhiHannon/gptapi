@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"fmt"
 	"gptapi/internal/limiter"
 	"gptapi/pkg/enum"
 	"os"
@@ -11,23 +12,28 @@ import (
 
 type IGPTClient interface {
 	SetPrompt(string, []string)
+	SetMaxReachedMsg(string)
 	SendText(string) (string, error)
 }
 
 type GPTManager struct {
-	clients map[string]IGPTClient
-	apiKeys []string
-	limiter *limiter.RedisRateLimiter
-	mu      *sync.RWMutex
+	clients    map[uint64]IGPTClient
+	clientsMap SafeMap
+	apiKeys    []string
+	limiter    *limiter.RedisRateLimiter
+	jhash      *JumpHash
+	mu         *sync.RWMutex
 }
 
 func NewGPTManager() *GPTManager {
 	m := &GPTManager{
-		clients: make(map[string]IGPTClient),
+		clients: make(map[uint64]IGPTClient),
 		mu:      new(sync.RWMutex),
 	}
-	m.limiter = limiter.NewRedisRateLimiter("GPT:LIMITER:", 10, time.Minute)
+	m.clientsMap = NewSafeMap()
+	m.limiter = limiter.NewRedisRateLimiter("GPT:LIMITER:", 2, time.Minute)
 	m.loadApiKeys()
+	m.jhash = newJumpHash(len(m.apiKeys), 1)
 	return m
 }
 
@@ -39,29 +45,19 @@ func (m *GPTManager) loadApiKeys() {
 	m.apiKeys = strings.Split(keys, ",")
 }
 
-func (m *GPTManager) getApiKey() string {
-	return m.apiKeys[0]
+func (m *GPTManager) getApiKey(key uint64) string {
+	pos := m.jhash.get(key)
+	return m.apiKeys[pos]
 }
 
-func (m *GPTManager) AddClient(id string, gptType enum.GPTType, historySize int) IGPTClient {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if client, exists := m.clients[id]; exists {
-		return client
-	}
-	c := CreateNewGPTClient(m.getApiKey(), gptType, historySize)
-	m.clients[id] = c
-	return c
+func (m *GPTManager) requestHandler(clientId uint64) bool {
+	return m.limiter.Allow(clientId)
 }
 
-func (m *GPTManager) GetClient(id string) IGPTClient {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if !m.limiter.Allow(id) {
-		return nil
-	}
-	if client, exists := m.clients[id]; exists {
-		return client
-	}
-	return nil
+func (m *GPTManager) MergeClient(id uint64, gptType enum.GPTType, historySize int) (IGPTClient, bool) {
+	c, exists := m.clientsMap.merge(fmt.Sprintf(`%d`, id), func(s string) interface{} {
+		c := CreateNewGPTClient(id, m.getApiKey(id), gptType, historySize, m.requestHandler)
+		return c
+	})
+	return c.(IGPTClient), exists
 }

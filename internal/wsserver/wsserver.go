@@ -45,11 +45,11 @@ func (s *WsServer) broadcastToClients(message []byte) {
 	}
 }
 
-func (s *WsServer) findClient(id string) *Client {
+func (s *WsServer) findClient(id uint64) *Client {
 	s.clientsLock.RLock()
 	defer s.clientsLock.RUnlock()
 	for client := range s.clients {
-		if client.ID.String() == id {
+		if client.ID == id {
 			return client
 		}
 	}
@@ -110,10 +110,10 @@ func (s *WsServer) SetOnClientRegister(handler func(*Client)) {
 	s.registerHandler = handler
 }
 
-func (s *WsServer) SendMessage(id string, data string) {
+func (s *WsServer) SendMessage(id uint64, data string) {
 	client := s.findClient(id)
 	if client == nil {
-		log.Println("no client with the id " + id)
+		log.Println(`no client with the id `, id)
 		return
 	}
 	message := NewChatMessage(data)

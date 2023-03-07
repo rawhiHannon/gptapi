@@ -52,21 +52,25 @@ func (c *CGPTResponse) extractAnswer() string {
 const MAX_RETRIES = 3
 
 type CGPTClient struct {
-	apiKey  string
-	prompt  string
-	history HistoryCache
-	retries int
+	id            uint64
+	apiKey        string
+	prompt        string
+	maxReachedMsg string
+	history       HistoryCache
+	reqHandler    func(uint64) bool
+	retries       int
 }
 
-func NewCGPTClient(apiKey string, historySize int) *CGPTClient {
+func NewCGPTClient(id uint64, apiKey string, historySize int, reqHandler func(uint64) bool) *CGPTClient {
 	g := &CGPTClient{}
-	g.init(apiKey, historySize)
+	g.init(apiKey, historySize, reqHandler)
 	return g
 }
 
-func (g *CGPTClient) init(apiKey string, historySize int) {
+func (g *CGPTClient) init(apiKey string, historySize int, reqHandler func(uint64) bool) {
 	g.apiKey = apiKey
 	g.retries = DEFAULT_MAX_RETRIES
+	g.reqHandler = reqHandler
 	g.history = HistoryCache{
 		size: historySize,
 	}
@@ -105,14 +109,14 @@ func (g *CGPTClient) SetPrompt(prompt string, history []string) {
 	}
 }
 
+func (g *CGPTClient) SetMaxReachedMsg(msg string) {
+	g.maxReachedMsg = msg
+}
+
 func (g *CGPTClient) SendText(text string) (string, error) {
 	systemMsg := CGPTMessage{
-		Role:    "system",
-		Content: g.prompt,
-	}
-	forceMsg := CGPTMessage{
 		Role:    "user",
-		Content: "جاوبني بنفس اللهجة اللي سألت فيها و استعمل نفس المصطلحات",
+		Content: g.prompt,
 	}
 	msg := CGPTMessage{
 		Role:    "user",
@@ -120,7 +124,6 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 	}
 	messages := make([]CGPTMessage, 0)
 	messages = append(messages, systemMsg)
-	messages = append(messages, forceMsg)
 	messages = append(messages, g.history.GetMessages()...)
 	messages = append(messages, msg)
 	requestBody := CGPTRequest{
@@ -129,7 +132,11 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 	}
 	answer := ""
 	for i := 0; i < MAX_RETRIES; i++ {
+		if g.reqHandler(g.id) == false {
+			return g.maxReachedMsg, nil
+		}
 		cgptResp, err := g.sendRequest(&requestBody)
+		log.Println(cgptResp.Usage)
 		if err != nil {
 			return "", err
 		}
@@ -138,7 +145,6 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 			break
 		}
 	}
-	log.Println(len(g.history.messages))
 	g.history.AddQuestion(text, answer)
 	return answer, nil
 }

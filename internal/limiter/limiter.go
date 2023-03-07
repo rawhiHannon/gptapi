@@ -2,7 +2,7 @@ package limiter
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -22,7 +22,7 @@ func NewRedisRateLimiter(prefix string, limit int, duration time.Duration) *Redi
 		duration: duration,
 	}
 	r.client = redis.NewClient(&redis.Options{
-		Addr:         "localhost",
+		Addr:         "localhost:6379",
 		Password:     "", // no password set
 		DB:           0,  // use default DB
 		PoolSize:     1000,
@@ -37,18 +37,18 @@ func (l *RedisRateLimiter) key(key string) string {
 	return l.prefix + key
 }
 
-func (l *RedisRateLimiter) Allow(key string) bool {
+func (l *RedisRateLimiter) Allow(key uint64) bool {
 	ctx := context.Background()
-	count, err := l.client.Incr(ctx, l.key(key)).Result()
+	strKey := fmt.Sprintf(`%d`, key)
+	count, err := l.client.Incr(ctx, l.key(strKey)).Result()
 	if err != nil {
-		return true // allow request if Redis is down or there's an error
+		return false
 	}
 	if count == 1 {
 		// set expiration time on the key
-		if err := l.client.Expire(ctx, l.key(key), l.duration).Err(); err != nil {
+		if err := l.client.Expire(ctx, l.key(strKey), l.duration).Err(); err != nil {
 			return true
 		}
 	}
-	log.Println(count, int64(l.limit))
 	return count <= int64(l.limit)
 }

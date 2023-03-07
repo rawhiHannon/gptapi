@@ -26,6 +26,7 @@ require (
 	github.com/vmihailenco/bufpool v0.1.11 // indirect
 	github.com/vmihailenco/msgpack/v4 v4.3.12 // indirect
 	github.com/vmihailenco/tagparser v0.1.1 // indirect
+	github.com/wneessen/go-mail v0.3.8 // indirect
 	github.com/yanzay/log v0.0.0-20160419144809-87352bb23506 // indirect
 	github.com/yanzay/tbot v1.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect

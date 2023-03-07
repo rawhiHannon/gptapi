@@ -2,10 +2,10 @@ package wsserver
 
 import (
 	"encoding/json"
+	"gptapi/internal/idgen"
 	"log"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -34,7 +34,7 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	ID              uuid.UUID `json:"id"`
+	ID              uint64 `json:"id"`
 	conn            *websocket.Conn
 	wsServer        *WsServer
 	send            chan []byte
@@ -45,7 +45,7 @@ type Client struct {
 
 func NewClient(conn *websocket.Conn, wsServer *WsServer) *Client {
 	return &Client{
-		ID:       uuid.New(),
+		ID:       idgen.NextId(),
 		conn:     conn,
 		wsServer: wsServer,
 		send:     make(chan []byte, 256),

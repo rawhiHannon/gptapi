@@ -50,7 +50,7 @@ func (this *HttpServer) RegisterChannel(channel string) {
 	this.wsServer.CreateRoom(channel)
 }
 
-func (h *HttpServer) Send(id string, data string) {
+func (h *HttpServer) Send(id uint64, data string) {
 	h.wsServer.SendMessage(id, data)
 }
 
