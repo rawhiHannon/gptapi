@@ -31,7 +31,7 @@ func NewGPTManager() *GPTManager {
 		mu:      new(sync.RWMutex),
 	}
 	m.clientsMap = NewSafeMap()
-	m.limiter = limiter.NewRedisRateLimiter("GPT:LIMITER:", 2, time.Minute)
+	m.limiter = limiter.NewRedisRateLimiter("GPT:LIMITER:", 20, time.Minute)
 	m.loadApiKeys()
 	m.jhash = newJumpHash(len(m.apiKeys), 1)
 	return m

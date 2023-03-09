@@ -44,7 +44,6 @@ func (c *CGPTResponse) extractAnswer() string {
 	answer := ""
 	if c.Choices != nil || len(c.Choices) != 0 {
 		answer = c.Choices[0].Message.Content
-		log.Println(c.Usage)
 	}
 	return answer
 }
@@ -115,15 +114,24 @@ func (g *CGPTClient) SetMaxReachedMsg(msg string) {
 
 func (g *CGPTClient) SendText(text string) (string, error) {
 	systemMsg := CGPTMessage{
-		Role:    "user",
+		Role:    "system",
 		Content: g.prompt,
+	}
+	systemMsg2 := CGPTMessage{
+		Role: "user",
+		Content: `
+		Rules:
+		. you have to use the same words/concepts the user use.
+		. you ask one question at a time about one specific thing.
+		. when you can use a phrase from Phrases you have to use it onw phrase every answer.
+		`,
 	}
 	msg := CGPTMessage{
 		Role:    "user",
 		Content: text,
 	}
 	messages := make([]CGPTMessage, 0)
-	messages = append(messages, systemMsg)
+	messages = append(messages, systemMsg, systemMsg2)
 	messages = append(messages, g.history.GetMessages()...)
 	messages = append(messages, msg)
 	requestBody := CGPTRequest{
