@@ -35,6 +35,7 @@ var upgrader = websocket.Upgrader{
 
 type Client struct {
 	ID              uint64 `json:"id"`
+	Token           string `json:"token"`
 	conn            *websocket.Conn
 	wsServer        *WsServer
 	send            chan []byte
@@ -43,9 +44,10 @@ type Client struct {
 	rooms           map[*Room]bool
 }
 
-func NewClient(conn *websocket.Conn, wsServer *WsServer) *Client {
+func NewClient(conn *websocket.Conn, wsServer *WsServer, token string) *Client {
 	return &Client{
 		ID:       idgen.NextId(),
+		Token:    token,
 		conn:     conn,
 		wsServer: wsServer,
 		send:     make(chan []byte, 256),

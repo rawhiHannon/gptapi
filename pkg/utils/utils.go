@@ -41,7 +41,7 @@ type Action struct {
 	priority     int
 }
 
-type RequestHandler = func(map[string]string, map[string][]string, map[string]interface{}) (map[string]chan struct{}, string, error)
+type RequestHandler = func(map[string]string, map[string][]string, map[string]interface{}) (string, error)
 
 func ExtractBody(req *http.Request) map[string]interface{} {
 	body, err := ioutil.ReadAll(req.Body)
@@ -59,7 +59,6 @@ func ExtractBody(req *http.Request) map[string]interface{} {
 
 func SendHttpResponse(w http.ResponseWriter, success bool, response string, responseKey string) {
 	w.Header().Set("Content-Type", "application/json")
-
 	if responseKey == "" {
 		responseKey = "data"
 	}
@@ -78,10 +77,9 @@ func SendHttpResponse(w http.ResponseWriter, success bool, response string, resp
 
 func GetHttpWrapper(handler RequestHandler, middlewares []Middleware) func(http.ResponseWriter, *http.Request) {
 	return (func(w http.ResponseWriter, r *http.Request) {
-		params := mux.Vars(r)
 		body := ExtractBody(r)
+		params := mux.Vars(r)
 		queryString := r.URL.Query()
-
 		//TODO: handle priority
 		//TODO: handle return immediate results via middlewares instead of err
 		if middlewares != nil && len(middlewares) > 0 {
@@ -93,31 +91,12 @@ func GetHttpWrapper(handler RequestHandler, middlewares []Middleware) func(http.
 				}
 			}
 		}
-
-		resultChannels, data, err := handler(params, queryString, body)
-
+		data, err := handler(params, queryString, body)
 		if err != nil {
 			SendHttpResponse(w, false, err.Error(), "")
 			return
 		}
-
-		//TODO: think about the PostProcessor
-
-		//TODO: add timeout channel
-		if resultChannels != nil {
-			select {
-			case <-resultChannels["Done"]:
-				SendHttpResponse(w, true, data, "")
-			case <-resultChannels["Fail"]:
-				SendHttpResponse(w, false, "", "")
-				// case <-time.After(1000 * time.Millisecond):
-				// 	fmt.Println(resultChannels["Done"])
-				// 	fmt.Println(resultChannels["Fail"])
-				// 	SendHttpResponse(w, false, "", "")
-			}
-		} else {
-			SendHttpResponse(w, true, data, "")
-		}
+		SendHttpResponse(w, true, data, "")
 	})
 }
 

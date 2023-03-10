@@ -2,7 +2,6 @@ package jwt
 
 import (
 	"errors"
-	"gptapi/internal/idgen"
 	"gptapi/pkg/models"
 	"time"
 
@@ -97,7 +96,7 @@ func (j *JWT) ValidateToken(tokenStr string) (*TokenPayload, error) {
 	return tokenPayload, nil
 }
 
-func (j *JWT) CreateToken(identifier string, data map[string]interface{}) (*TokenPayload, error) {
+func (j *JWT) CreateToken(identifier string, accessId uint64, data map[string]interface{}) (*TokenPayload, error) {
 	tokenPayload := &TokenPayload{}
 	storedJwtToken, _ := j.cache.HGet(identifier+":metadata", "jwt")
 	if storedJwtToken != "" {
@@ -105,7 +104,6 @@ func (j *JWT) CreateToken(identifier string, data map[string]interface{}) (*Toke
 		tokenPayload.Exists = true
 		return tokenPayload, nil
 	}
-	accessId := idgen.NextId()
 	expire := time.Now().Add(time.Hour * time.Duration(24)).Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"accessId":   accessId,

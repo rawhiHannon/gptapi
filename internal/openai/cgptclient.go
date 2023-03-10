@@ -119,19 +119,16 @@ func (g *CGPTClient) SetRateLimitMsg(msg string) {
 	g.rateLimitMsg = msg
 }
 
-func (g *CGPTClient) SendText(text string) (string, error) {
+func (g *CGPTClient) SendText(text string) string {
 	systemMsg := CGPTMessage{
 		Role:    "system",
 		Content: g.prompt,
 	}
-	systemMsg2 := CGPTMessage{
+	usrMsg := CGPTMessage{
 		Role: "user",
 		Content: `
-		Rules:
-		. you have to use the same words/concepts the user use.
-		. you ask one question at a time about one specific thing.
-		. when you can use a phrase from Phrases you have to use it onw phrase every answer.
-		. if the last answer was to wait one minute and get back, then answer with sorry you are here again and continue from where you left.
+		if the last answer was to wait one minute and get back,
+		then answer with sorry you are here again and continue from where you left.
 		`,
 	}
 	msg := CGPTMessage{
@@ -139,7 +136,7 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 		Content: text,
 	}
 	messages := make([]CGPTMessage, 0)
-	messages = append(messages, systemMsg, systemMsg2)
+	messages = append(messages, systemMsg, usrMsg)
 	messages = append(messages, g.history.GetMessages()...)
 	messages = append(messages, msg)
 	requestBody := CGPTRequest{
@@ -150,17 +147,18 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 	for i := 0; i < MAX_RETRIES; i++ {
 		if g.limiter.Allow(g.id) == false {
 			if g.onHold == true {
-				return "", nil
+				return ""
 			} else {
 				g.onHold = true
 				g.history.AddQuestion(text, g.rateLimitMsg)
-				return g.rateLimitMsg, nil
+				return g.rateLimitMsg
 			}
 		}
 		cgptResp, err := g.sendRequest(&requestBody)
 		log.Println(cgptResp.Usage)
 		if err != nil {
-			return "", err
+			log.Println(err)
+			return ""
 		}
 		answer = cgptResp.extractAnswer()
 		if answer != "" {
@@ -168,5 +166,5 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 		}
 	}
 	g.history.AddQuestion(text, answer)
-	return answer, nil
+	return answer
 }

@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/PullRequestInc/go-gpt3"
@@ -51,9 +52,9 @@ func (g *GPTClient) SetPrompt(prompt string, history []string) {
 	}
 }
 
-func (g *GPTClient) SendText(text string) (response string, err error) {
+func (g *GPTClient) SendText(text string) (response string) {
 	sb := strings.Builder{}
-	err = g.client.CompletionStreamWithEngine(
+	err := g.client.CompletionStreamWithEngine(
 		g.ctx,
 		g.engine,
 		gpt3.CompletionRequest{
@@ -75,11 +76,12 @@ func (g *GPTClient) SendText(text string) (response string, err error) {
 		},
 	)
 	if err != nil {
-		return "", err
+		log.Println(err)
+		return ""
 	}
 	response = sb.String()
 	response = strings.TrimLeft(response, "\n")
 	g.history = append(g.history, text)
 	g.history = append(g.history, response)
-	return response, nil
+	return response
 }

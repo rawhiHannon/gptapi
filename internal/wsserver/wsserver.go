@@ -100,7 +100,12 @@ func (s *WsServer) ServeWs(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := NewClient(conn, s)
+	token := ""
+	bearerToken, tok := r.URL.Query()["bearer"]
+	if tok && len(bearerToken) == 1 {
+		token = bearerToken[0]
+	}
+	client := NewClient(conn, s, token)
 	go client.writePump()
 	go client.readPump()
 	s.register <- client

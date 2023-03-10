@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"errors"
+	"gptapi/internal/idgen"
 	"log"
 	"testing"
 )
@@ -42,7 +43,7 @@ func TestJWT(t *testing.T) {
 		"name": "John",
 		"age":  30.5,
 	}
-	tokenPayload, err := jwt.CreateToken("12345", data)
+	tokenPayload, err := jwt.CreateToken("test", idgen.NextId(), data)
 	if err != nil {
 		t.Fatalf("Unexpected error creating token: %v", err)
 	}
@@ -69,7 +70,7 @@ func TestJWT(t *testing.T) {
 			t.Errorf("Expected Data[%s] to be %s, but got %s", key, value, tokenPayload.Data[key])
 		}
 	}
-	if _, err := cache.HGet("12345:metadata", "jwt"); err != nil {
+	if _, err := cache.HGet("test:metadata", "jwt"); err != nil {
 		t.Errorf("Expected token to be stored in cache, but got error: %v", err)
 	}
 

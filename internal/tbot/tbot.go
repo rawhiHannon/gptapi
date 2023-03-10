@@ -71,7 +71,7 @@ func (t *TelegramBot) init(cache models.CacheManager, prompt string, maxReachedM
 
 func (t *TelegramBot) getChatKey(chatId int64) string {
 	token, _ := t.chatMap.Merge(fmt.Sprintf(`%d`, chatId), func(s string) interface{} {
-		return t.gptManager.GenerateToken("bot", DEFAULT_WINDOW, DEFAULT_LIMIT, DEFUALT_RATE)
+		return t.gptManager.GenerateToken("bot", uint64(chatId), DEFAULT_WINDOW, DEFAULT_LIMIT, DEFUALT_RATE)
 	})
 	return token.(string)
 }
@@ -89,7 +89,7 @@ func (t *TelegramBot) getChat(chatId int64) openai.IGPTClient {
 func (t *TelegramBot) questionHandler(m *tbot.Message) {
 	question := m.Vars["question"]
 	log.Println(question, m.ChatID)
-	answer, _ := t.getChat(m.ChatID).SendText(question)
+	answer := t.getChat(m.ChatID).SendText(question)
 	if answer != "" {
 		m.Reply(answer)
 	}

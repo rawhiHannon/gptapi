@@ -7,6 +7,7 @@ import (
 	"gptapi/internal/safe"
 	"gptapi/pkg/enum"
 	"gptapi/pkg/models"
+	"log"
 	"os"
 	"strings"
 	"sync"
@@ -16,7 +17,7 @@ import (
 type IGPTClient interface {
 	SetPrompt(string, []string)
 	SetRateLimitMsg(string)
-	SendText(string) (string, error)
+	SendText(string) string
 }
 
 type GPTManager struct {
@@ -64,13 +65,13 @@ func (m *GPTManager) decodeToken(token string) *jwt.TokenPayload {
 	return payload
 }
 
-func (m *GPTManager) GenerateToken(identifier string, window, limit int, rate time.Duration) string {
+func (m *GPTManager) GenerateToken(identifier string, accessId uint64, window, limit int, rate time.Duration) string {
 	payload := map[string]interface{}{
 		"limit":  limit,
 		"rate":   rate,
 		"window": window,
 	}
-	token, err := m.tokenManager.CreateToken(identifier, payload)
+	token, err := m.tokenManager.CreateToken(identifier, accessId, payload)
 	if err != nil {
 		return ""
 	}
@@ -80,6 +81,7 @@ func (m *GPTManager) GenerateToken(identifier string, window, limit int, rate ti
 func (m *GPTManager) GetClient(token string) (IGPTClient, bool) {
 	payload := m.decodeToken(token)
 	if payload == nil {
+		log.Println(token)
 		return nil, false
 	}
 	data := payload.Data
