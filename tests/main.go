@@ -152,6 +152,7 @@ Phrases:
 
 func main() {
 	r := redis.NewRedisClient("localhost:6379")
-	bot := tbot.NewTelegramBot(r, rule3, "بنفع ترجعلي بعد دقيقة ؟", 0, 0, 0)
+	bot := tbot.NewTelegramBot(r)
+	bot.SetPrompt(rule3)
 	bot.Start()
 }

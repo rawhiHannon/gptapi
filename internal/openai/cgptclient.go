@@ -124,19 +124,12 @@ func (g *CGPTClient) SendText(text string) string {
 		Role:    "system",
 		Content: g.prompt,
 	}
-	usrMsg := CGPTMessage{
-		Role: "user",
-		Content: `
-		if the last answer was to wait one minute and get back,
-		then answer with sorry you are here again and continue from where you left.
-		`,
-	}
 	msg := CGPTMessage{
 		Role:    "user",
 		Content: text,
 	}
 	messages := make([]CGPTMessage, 0)
-	messages = append(messages, systemMsg, usrMsg)
+	messages = append(messages, systemMsg)
 	messages = append(messages, g.history.GetMessages()...)
 	messages = append(messages, msg)
 	requestBody := CGPTRequest{

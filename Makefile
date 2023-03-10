@@ -1,16 +1,13 @@
-compile-cli:
-	GOOS=linux GOARCH=386 go build -o bin/linux-gpt-cli cmd/gpt-cli/main.go
-	GOOS=windows GOARCH=386 go build -o bin/windows-gpt-cli.exe cmd/gpt-cli/main.go
+compile-chatapp:
+	GOOS=linux GOARCH=386 go build -o bin/linux-chatapp cmd/chatapp/main.go
+	GOOS=windows GOARCH=386 go build -o bin/windows-chatapp.exe cmd/chatapp/main.go
 
-compile-server:
-	GOOS=linux GOARCH=386 go build -o bin/linux-gpt-server cmd/gpt-server/main.go
-	GOOS=windows GOARCH=386 go build -o bin/windows-gpt-server.exe cmd/gpt-server/main.go
+compile-botapp:
+	GOOS=linux GOARCH=386 go build -o bin/linux-botapp cmd/botapp/main.go
+	GOOS=windows GOARCH=386 go build -o bin/windows-botapp.exe cmd/botapp/main.go
 
-compile-bot:
-	GOOS=linux GOARCH=386 go build -o bin/linux-gpt-bot cmd/gpt-bot/main.go
-	GOOS=windows GOARCH=386 go build -o bin/windows-gpt-bot.exe cmd/gpt-bot/main.go
 
-build: compile-cli compile-server compile-bot
+build: compile-cli compile-chatapp compile-botapp
 
 test:
 	go run tests/main.go

@@ -14,30 +14,37 @@ import (
 )
 
 const (
-	DEFUALT_RATE   = time.Minute
+	DEFAULT_RATE   = time.Minute
 	DEFAULT_LIMIT  = 4
 	DEFAULT_WINDOW = 10
+	DEFAULT_MSG    = "Please Subscribe"
 )
 
 type TelegramBot struct {
-	gptManager    *openai.GPTManager
-	bot           *tbot.Server
-	cache         models.CacheManager
-	chatMap       safe.SafeMap
-	prompt        string
-	maxReachedMsg string
-	rate          time.Duration
-	limit         int
-	window        int
+	gptManager   *openai.GPTManager
+	bot          *tbot.Server
+	cache        models.CacheManager
+	chatMap      safe.SafeMap
+	prompt       string
+	rateLimitMsg string
+	rate         time.Duration
+	limit        int
+	window       int
 }
 
-func NewTelegramBot(cache models.CacheManager, prompt string, maxReachedMsg string, window, limit int, rate time.Duration) *TelegramBot {
-	bot := &TelegramBot{}
-	bot.init(cache, prompt, maxReachedMsg, window, limit, rate)
+func NewTelegramBot(cache models.CacheManager) *TelegramBot {
+	bot := &TelegramBot{
+		cache:        cache,
+		rateLimitMsg: DEFAULT_MSG,
+		window:       DEFAULT_WINDOW,
+		limit:        DEFAULT_LIMIT,
+		rate:         DEFAULT_RATE,
+	}
+	bot.init()
 	return bot
 }
 
-func (t *TelegramBot) init(cache models.CacheManager, prompt string, maxReachedMsg string, window, limit int, rate time.Duration) {
+func (t *TelegramBot) init() {
 	utils.LoadEnv("")
 	parmaName := "TELEGRAM_TEST_TOKEN"
 	if os.Getenv("ENVIROMENT") == "production" {
@@ -47,31 +54,16 @@ func (t *TelegramBot) init(cache models.CacheManager, prompt string, maxReachedM
 	if err != nil {
 		log.Fatal(err)
 	}
-	t.cache = cache
 	t.bot = bot
-	t.window = window
-	t.limit = limit
-	t.rate = rate
-	if t.window == 0 {
-		t.window = DEFAULT_WINDOW
-	}
-	if t.limit == 0 {
-		t.limit = DEFAULT_LIMIT
-	}
-	if t.rate == 0 {
-		t.rate = DEFUALT_RATE
-	}
 	t.gptManager = openai.NewGPTManager(t.cache)
 	t.chatMap = safe.NewSafeMap()
-	t.prompt = prompt
-	t.maxReachedMsg = maxReachedMsg
 	bot.HandleFunc("{question}", t.questionHandler)
 	bot.ListenAndServe()
 }
 
 func (t *TelegramBot) getChatKey(chatId int64) string {
 	token, _ := t.chatMap.Merge(fmt.Sprintf(`%d`, chatId), func(s string) interface{} {
-		return t.gptManager.GenerateToken("bot", uint64(chatId), DEFAULT_WINDOW, DEFAULT_LIMIT, DEFUALT_RATE)
+		return t.gptManager.GenerateToken("bot", uint64(chatId), t.window, t.limit, t.rate)
 	})
 	return token.(string)
 }
@@ -81,7 +73,7 @@ func (t *TelegramBot) getChat(chatId int64) openai.IGPTClient {
 	client, exists := t.gptManager.GetClient(token)
 	if !exists && client != nil {
 		client.SetPrompt(t.prompt, nil)
-		client.SetRateLimitMsg(t.maxReachedMsg)
+		client.SetRateLimitMsg(t.rateLimitMsg)
 	}
 	return client
 }
@@ -93,6 +85,14 @@ func (t *TelegramBot) questionHandler(m *tbot.Message) {
 	if answer != "" {
 		m.Reply(answer)
 	}
+}
+
+func (t *TelegramBot) SetPrompt(prompt string) {
+	t.prompt = prompt
+}
+
+func (t *TelegramBot) SetRateLimitMsg(msg string) {
+	t.rateLimitMsg = msg
 }
 
 func (t *TelegramBot) Start() {

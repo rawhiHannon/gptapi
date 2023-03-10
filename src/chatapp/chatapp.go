@@ -37,7 +37,7 @@ func (h *ChatApp) init() {
 			}
 			gpt, _ := h.gptManager.GetClient(c.Token)
 			if gpt == nil {
-				h.server.Send(c.ID, "You reached max limit")
+				return
 			}
 			res := gpt.SendText(m.Message)
 			log.Println(res)

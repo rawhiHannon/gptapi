@@ -23,6 +23,7 @@ type IGPTClient interface {
 type GPTManager struct {
 	clients      map[uint64]IGPTClient
 	cache        models.CacheManager
+	gptType      enum.GPTType
 	tokenManager *jwt.JWT
 	clientsMap   safe.SafeMap
 	apiKeys      []string
@@ -34,6 +35,7 @@ type GPTManager struct {
 func NewGPTManager(cache models.CacheManager) *GPTManager {
 	m := &GPTManager{
 		clients: make(map[uint64]IGPTClient),
+		gptType: enum.GPT_3_5_TURBO,
 		mu:      new(sync.RWMutex),
 	}
 	m.cache = cache
@@ -65,6 +67,10 @@ func (m *GPTManager) decodeToken(token string) *jwt.TokenPayload {
 	return payload
 }
 
+func (m *GPTManager) SetType(gptType enum.GPTType) {
+	m.gptType = gptType
+}
+
 func (m *GPTManager) GenerateToken(identifier string, accessId uint64, window, limit int, rate time.Duration) string {
 	payload := map[string]interface{}{
 		"limit":  limit,
@@ -89,7 +95,7 @@ func (m *GPTManager) GetClient(token string) (IGPTClient, bool) {
 	window := int(data["window"].(float64))
 	rate := time.Duration(int64(data["rate"].(float64)))
 	c, exists := m.clientsMap.Merge(fmt.Sprintf(`%d`, payload.AccessId), func(s string) interface{} {
-		c := CreateNewGPTClient(payload.AccessId, m.getApiKey(payload.AccessId), enum.GPT_3_5_TURBO, window, limit, rate)
+		c := CreateNewGPTClient(payload.AccessId, m.getApiKey(payload.AccessId), m.gptType, window, limit, rate)
 		return c
 	})
 	return c.(IGPTClient), exists
