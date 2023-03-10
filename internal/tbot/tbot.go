@@ -62,7 +62,8 @@ func (t *TelegramBot) init() {
 }
 
 func (t *TelegramBot) getChatKey(chatId int64) string {
-	token, _ := t.chatMap.Merge(fmt.Sprintf(`%d`, chatId), func(s string) interface{} {
+	id := fmt.Sprintf(`%d`, chatId)
+	token, _ := t.chatMap.Merge(id, func(s string) interface{} {
 		return t.gptManager.GenerateToken("bot", uint64(chatId), t.window, t.limit, t.rate)
 	})
 	return token.(string)

@@ -7,7 +7,6 @@ import (
 	"gptapi/internal/wsserver"
 	"gptapi/pkg/api/httpserver"
 	"gptapi/pkg/utils"
-	"log"
 	"time"
 )
 
@@ -40,7 +39,6 @@ func (h *ChatApp) init() {
 				return
 			}
 			res := gpt.SendText(m.Message)
-			log.Println(res)
 			h.server.Send(c.ID, res)
 		})
 		c.SetOnSettingsReceived(func(c *wsserver.Client, m *wsserver.Message) {
