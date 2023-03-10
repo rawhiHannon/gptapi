@@ -69,7 +69,7 @@ func (t *TelegramBot) getChatKey(chatId int64) string {
 	return token.(string)
 }
 
-func (t *TelegramBot) getChat(chatId int64) openai.IGPTClient {
+func (t *TelegramBot) getChat(chatId int64) models.IGPTClient {
 	token := t.getChatKey(chatId)
 	client, exists := t.gptManager.GetClient(token)
 	if !exists && client != nil {

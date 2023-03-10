@@ -14,14 +14,8 @@ import (
 	"time"
 )
 
-type IGPTClient interface {
-	SetPrompt(string, []string)
-	SetRateLimitMsg(string)
-	SendText(string) string
-}
-
 type GPTManager struct {
-	clients      map[uint64]IGPTClient
+	clients      map[uint64]models.IGPTClient
 	cache        models.CacheManager
 	gptType      enum.GPTType
 	tokenManager *jwt.JWT
@@ -34,7 +28,7 @@ type GPTManager struct {
 
 func NewGPTManager(cache models.CacheManager) *GPTManager {
 	m := &GPTManager{
-		clients: make(map[uint64]IGPTClient),
+		clients: make(map[uint64]models.IGPTClient),
 		gptType: enum.GPT_3_5_TURBO,
 		mu:      new(sync.RWMutex),
 	}
@@ -84,7 +78,7 @@ func (m *GPTManager) GenerateToken(identifier string, accessId uint64, window, l
 	return token.Token
 }
 
-func (m *GPTManager) GetClient(token string) (IGPTClient, bool) {
+func (m *GPTManager) GetClient(token string) (models.IGPTClient, bool) {
 	payload := m.decodeToken(token)
 	if payload == nil {
 		log.Println(token)
@@ -99,5 +93,5 @@ func (m *GPTManager) GetClient(token string) (IGPTClient, bool) {
 		c := CreateNewGPTClient(payload.AccessId, apiKey, m.gptType, window, limit, rate)
 		return c
 	})
-	return c.(IGPTClient), exists
+	return c.(models.IGPTClient), exists
 }
