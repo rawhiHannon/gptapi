@@ -3,11 +3,7 @@ package jwt
 import (
 	"errors"
 	"log"
-	"os"
 	"testing"
-	"time"
-
-	"github.com/dgrijalva/jwt-go"
 )
 
 type mockCacheManager struct {
@@ -37,85 +33,62 @@ func (m *mockCacheManager) HGet(key string, field string) (string, error) {
 	return "", errors.New("not found")
 }
 
-func TestNewJWT(t *testing.T) {
+func TestJWT(t *testing.T) {
 	cache := &mockCacheManager{}
-	jwt := New(cache)
-	if jwt.cache != cache {
-		t.Error("Failed to initialize cache")
-	}
-}
+	jwt := New(cache, "abcde")
 
-func TestVerifyToken(t *testing.T) {
-	os.Setenv("SERVER_SECRET", "secret")
-	_jwt := &JWT{}
-	token, err := _jwt.verifyToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NVdWlkIjoiOTBiNmJjYmItYjEwZi00ZWE2LWJkZmItNWI4OGI4YjU5ZDZjIiwiZXhwaXJlIjozMjI4NTUzNTM0LCJpZGVudGlmaWVyIjoidGVzdHVzZXIiLCJwZXJtaXNzaW9uIjoidGVzdF9wZXJtaXNzaW9uIn0.ddPkj9euDbkSURdkoJPFdqTxIyQsvdQQ_EUb8jIe1bs")
+	// Test creating a token
+	data := map[string]interface{}{
+		"name": "John",
+		"age":  30.5,
+	}
+	tokenPayload, err := jwt.CreateToken("12345", data)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("Unexpected error creating token: %v", err)
 	}
-	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-		t.Error("Unexpected signing method")
+	if tokenPayload.AccessId == 0 {
+		t.Errorf("Expected non-zero AccessId in token payload")
 	}
-}
+	if tokenPayload.Token == "" {
+		t.Errorf("Expected non-empty Token in token payload")
+	}
+	if !tokenPayload.Exists {
+		t.Errorf("Expected Exists to be true in token payload")
+	}
+	if tokenPayload.Expire == 0 {
+		t.Errorf("Expected non-zero Expire in token payload")
+	}
+	if tokenPayload.Device != "" {
+		t.Errorf("Expected empty Device in token payload")
+	}
+	if len(tokenPayload.Data) != len(data) {
+		t.Errorf("Expected Data to have %d items, but got %d", len(data), len(tokenPayload.Data))
+	}
+	for key, value := range data {
+		if tokenPayload.Data[key] != value {
+			t.Errorf("Expected Data[%s] to be %s, but got %s", key, value, tokenPayload.Data[key])
+		}
+	}
+	if _, err := cache.HGet("12345:metadata", "jwt"); err != nil {
+		t.Errorf("Expected token to be stored in cache, but got error: %v", err)
+	}
 
-func TestExtractTokenMetadata(t *testing.T) {
-	os.Setenv("SERVER_SECRET", "secret")
-	jwt := &JWT{}
-	payload, err := jwt.extractTokenMetadata("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NVdWlkIjoiOTBiNmJjYmItYjEwZi00ZWE2LWJkZmItNWI4OGI4YjU5ZDZjIiwiZXhwaXJlIjozMjI4NTUzNTM0LCJpZGVudGlmaWVyIjoidGVzdHVzZXIiLCJwZXJtaXNzaW9uIjoidGVzdF9wZXJtaXNzaW9uIn0.ddPkj9euDbkSURdkoJPFdqTxIyQsvdQQ_EUb8jIe1bs")
+	// Test validating a token
+	existingTokenStr := tokenPayload.Token
+	log.Println(existingTokenStr)
+	tokenPayload, err = jwt.ValidateToken(existingTokenStr)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("Unexpected error validating token: %v", err)
 	}
-	if payload.Identifier != "testuser" {
-		t.Error("Invalid identifier")
+	if tokenPayload.Token != existingTokenStr {
+		t.Errorf("Expected token string to match, but got %s and %s", tokenPayload.Token, existingTokenStr)
 	}
-	if payload.Permission != "test_permission" {
-		t.Error("Invalid permission")
+	if len(tokenPayload.Data) != len(data) {
+		t.Errorf("Expected Data to have %d items, but got %d", len(data), len(tokenPayload.Data))
 	}
-}
-
-func TestValidateToken(t *testing.T) {
-	os.Setenv("SERVER_SECRET", "secret")
-	cache := &mockCacheManager{}
-	jwt := New(cache)
-	token, err := jwt.CreateToken("test_user", "test_permission")
-	payload, err := jwt.ValidateToken(token.Token)
-	if err != nil {
-		t.Error(err)
-	}
-	if payload.Identifier != "test_user" {
-		t.Error("Invalid identifier")
-	}
-	if payload.Permission != "test_permission" {
-		t.Error("Invalid permission")
-	}
-}
-
-func TestCreateToken(t *testing.T) {
-	os.Setenv("SERVER_SECRET", "secret")
-	cache := &mockCacheManager{}
-	jwt := New(cache)
-
-	token, err := jwt.CreateToken("testuser", "test_permission")
-	if err != nil {
-		t.Error(err)
-	}
-
-	if token.AccessUuid == "" {
-		t.Error("Failed to generate accessUuid", token.AccessUuid)
-	}
-	if token.Permission != "test_permission" {
-		t.Error("Invalid permission", token.Permission)
-	}
-
-	if token.Expire <= time.Now().Unix() {
-		t.Error("Invalid expiration time", token.Expire)
-	}
-
-	token, err = jwt.CreateToken("testuser", "test_permission")
-	if err != nil {
-		t.Error(err)
-	}
-	if !token.Exists {
-		log.Println(token)
-		t.Error("Failed to find existing token")
+	for key, value := range data {
+		if tokenPayload.Data[key] != value {
+			t.Errorf("Expected Data[%s] to be %s, but got %s", key, value, tokenPayload.Data[key])
+		}
 	}
 }

@@ -3,9 +3,10 @@ package openai
 import (
 	"context"
 	"gptapi/pkg/enum"
+	"time"
 )
 
-func CreateNewGPTClient(id uint64, apiKey string, gptType enum.GPTType, historySize int, reqHandler func(uint64) bool) IGPTClient {
+func CreateNewGPTClient(id uint64, apiKey string, gptType enum.GPTType, window, limit int, rate time.Duration) IGPTClient {
 	if apiKey == "" {
 		return nil
 	}
@@ -13,7 +14,7 @@ func CreateNewGPTClient(id uint64, apiKey string, gptType enum.GPTType, historyS
 	case enum.GPT_3:
 		return NewGPTClient(context.Background(), apiKey, nil)
 	case enum.GPT_3_5_TURBO:
-		return NewCGPTClient(id, apiKey, historySize, reqHandler)
+		return NewCGPTClient(id, apiKey, window, limit, rate)
 	}
 	return nil
 }

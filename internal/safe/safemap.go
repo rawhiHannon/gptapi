@@ -1,4 +1,4 @@
-package openai
+package safe
 
 import (
 	"crypto/sha1"
@@ -24,7 +24,14 @@ func NewSafeMap() SafeMap {
 	return c
 }
 
-func (c SafeMap) get(key string) (item interface{}, exists bool) {
+func (c SafeMap) getShard(key string) (shard *SafeMapShard) {
+	hasher := sha1.New()
+	hasher.Write([]byte(key))
+	shardKey := fmt.Sprintf("%x", hasher.Sum(nil))[0:2]
+	return c[shardKey]
+}
+
+func (c SafeMap) Get(key string) (item interface{}, exists bool) {
 	shard := c.getShard(key)
 	shard.mu.RLock()
 	defer shard.mu.RUnlock()
@@ -32,14 +39,14 @@ func (c SafeMap) get(key string) (item interface{}, exists bool) {
 	return item, exists
 }
 
-func (c SafeMap) set(key string, item interface{}) {
+func (c SafeMap) Set(key string, item interface{}) {
 	shard := c.getShard(key)
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 	shard.items[key] = item
 }
 
-func (c SafeMap) merge(key string, newItemGenerator func(string) interface{}) (interface{}, bool) {
+func (c SafeMap) Merge(key string, newItemGenerator func(string) interface{}) (interface{}, bool) {
 	shard := c.getShard(key)
 	shard.mu.RLock()
 	if item, exists := shard.items[key]; exists {
@@ -62,16 +69,9 @@ func (c SafeMap) merge(key string, newItemGenerator func(string) interface{}) (i
 	}
 }
 
-func (c SafeMap) del(key string) {
+func (c SafeMap) Del(key string) {
 	shard := c.getShard(key)
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
 	delete(shard.items, key)
-}
-
-func (c SafeMap) getShard(key string) (shard *SafeMapShard) {
-	hasher := sha1.New()
-	hasher.Write([]byte(key))
-	shardKey := fmt.Sprintf("%x", hasher.Sum(nil))[0:2]
-	return c[shardKey]
 }

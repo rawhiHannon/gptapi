@@ -38,7 +38,7 @@ func (g *GPTClient) init(apiKey string) {
 	g.temperature = 0
 }
 
-func (g *GPTClient) SetMaxReachedMsg(msg string) {
+func (g *GPTClient) SetRateLimitMsg(msg string) {
 
 }
 

@@ -1,6 +1,9 @@
 package main
 
-import "gptapi/internal/tbot"
+import (
+	"gptapi/internal/storage/redis"
+	"gptapi/internal/tbot"
+)
 
 const rule1 = `rules: 
 . your will be a software engineer caled rawhi.
@@ -148,6 +151,7 @@ Phrases:
 `
 
 func main() {
-	bot := tbot.NewTelegramBot(rule3, "بنفع ترجعلي بعد دقيقة ؟")
+	r := redis.NewRedisClient("localhost:6379")
+	bot := tbot.NewTelegramBot(r, rule3, "بنفع ترجعلي بعد دقيقة ؟", 0, 0, 0)
 	bot.Start()
 }

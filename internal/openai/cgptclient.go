@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gptapi/internal/limiter"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 )
 
 const DEFAULT_MAX_RETRIES = 5
@@ -48,37 +50,42 @@ func (c *CGPTResponse) extractAnswer() string {
 	return answer
 }
 
-const MAX_RETRIES = 3
+const (
+	MAX_RETRIES = 3
+	CHATGPT_API = "https://api.openai.com/v1/chat/completions"
+	GPT_MODEL   = "gpt-3.5-turbo"
+)
 
 type CGPTClient struct {
-	id            uint64
-	apiKey        string
-	prompt        string
-	maxReachedMsg string
-	history       HistoryCache
-	reqHandler    func(uint64) bool
-	retries       int
+	id           uint64
+	apiKey       string
+	prompt       string
+	rateLimitMsg string
+	onHold       bool
+	history      HistoryCache
+	limiter      *limiter.RedisRateLimiter
+	retries      int
 }
 
-func NewCGPTClient(id uint64, apiKey string, historySize int, reqHandler func(uint64) bool) *CGPTClient {
+func NewCGPTClient(id uint64, apiKey string, window, limit int, rate time.Duration) *CGPTClient {
 	g := &CGPTClient{}
-	g.init(apiKey, historySize, reqHandler)
+	g.init(apiKey, window, limit, rate)
 	return g
 }
 
-func (g *CGPTClient) init(apiKey string, historySize int, reqHandler func(uint64) bool) {
+func (g *CGPTClient) init(apiKey string, window, limit int, rate time.Duration) {
 	g.apiKey = apiKey
 	g.retries = DEFAULT_MAX_RETRIES
-	g.reqHandler = reqHandler
+	g.limiter = limiter.NewRedisRateLimiter(fmt.Sprintf(`GPT:LIMITER:%d:`, g.id), limit, rate)
 	g.history = HistoryCache{
-		size: historySize,
+		size: window,
 	}
 }
 
 func (g *CGPTClient) sendRequest(requestBody *CGPTRequest) (*CGPTResponse, error) {
 	postData, _ := json.Marshal(requestBody)
 	client := &http.Client{}
-	req, _ := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(postData))
+	req, _ := http.NewRequest("POST", CHATGPT_API, bytes.NewReader(postData))
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", g.apiKey))
@@ -108,8 +115,8 @@ func (g *CGPTClient) SetPrompt(prompt string, history []string) {
 	}
 }
 
-func (g *CGPTClient) SetMaxReachedMsg(msg string) {
-	g.maxReachedMsg = msg
+func (g *CGPTClient) SetRateLimitMsg(msg string) {
+	g.rateLimitMsg = msg
 }
 
 func (g *CGPTClient) SendText(text string) (string, error) {
@@ -124,6 +131,7 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 		. you have to use the same words/concepts the user use.
 		. you ask one question at a time about one specific thing.
 		. when you can use a phrase from Phrases you have to use it onw phrase every answer.
+		. if the last answer was to wait one minute and get back, then answer with sorry you are here again and continue from where you left.
 		`,
 	}
 	msg := CGPTMessage{
@@ -135,13 +143,19 @@ func (g *CGPTClient) SendText(text string) (string, error) {
 	messages = append(messages, g.history.GetMessages()...)
 	messages = append(messages, msg)
 	requestBody := CGPTRequest{
-		Model:    "gpt-3.5-turbo",
+		Model:    GPT_MODEL,
 		Messages: messages,
 	}
 	answer := ""
 	for i := 0; i < MAX_RETRIES; i++ {
-		if g.reqHandler(g.id) == false {
-			return g.maxReachedMsg, nil
+		if g.limiter.Allow(g.id) == false {
+			if g.onHold == true {
+				return "", nil
+			} else {
+				g.onHold = true
+				g.history.AddQuestion(text, g.rateLimitMsg)
+				return g.rateLimitMsg, nil
+			}
 		}
 		cgptResp, err := g.sendRequest(&requestBody)
 		log.Println(cgptResp.Usage)

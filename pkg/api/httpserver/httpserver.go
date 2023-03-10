@@ -25,17 +25,16 @@ func NewHttpServer() *HttpServer {
 	return networkInstance
 }
 
-func (this *HttpServer) init() {
-	this.actions = make(map[string]utils.HttpHandler)
-	this.router = mux.NewRouter()
-	this.api = this.router.PathPrefix("/api").Subrouter()
+func (h *HttpServer) init() {
+	h.actions = make(map[string]utils.HttpHandler)
+	h.router = mux.NewRouter()
+	h.api = h.router.PathPrefix("/api").Subrouter()
 }
 
-func (this *HttpServer) initWebSocketsServer() {
-	this.wsServer = wsserver.NewWebsocketServer()
-
-	this.api.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		this.wsServer.ServeWs(w, r)
+func (h *HttpServer) initWebSocketsServer() {
+	h.wsServer = wsserver.NewWebsocketServer()
+	h.api.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		h.wsServer.ServeWs(w, r)
 	})
 }
 
@@ -43,19 +42,19 @@ func (h *HttpServer) SetOnClientRegister(handler func(*wsserver.Client)) {
 	h.wsServer.SetOnClientRegister(handler)
 }
 
-func (this *HttpServer) RegisterChannel(channel string) {
-	if this.wsServer.HasRoom(channel) {
+func (h *HttpServer) RegisterChannel(channel string) {
+	if h.wsServer.HasRoom(channel) {
 		return
 	}
-	this.wsServer.CreateRoom(channel)
+	h.wsServer.CreateRoom(channel)
 }
 
 func (h *HttpServer) Send(id uint64, data string) {
 	h.wsServer.SendMessage(id, data)
 }
 
-func (this *HttpServer) Broadcast(channel string, data [][]string) {
-	if this.wsServer.RoomHasListeners(channel) == false {
+func (h *HttpServer) Broadcast(channel string, data [][]string) {
+	if h.wsServer.RoomHasListeners(channel) == false {
 		return
 	}
 	go func() {
@@ -63,18 +62,18 @@ func (this *HttpServer) Broadcast(channel string, data [][]string) {
 		for _, arr := range data {
 			strData = append(strData, strings.Join(arr, " "))
 		}
-		this.wsServer.BroadcastStream(channel, strings.Join(strData, "\n"))
+		h.wsServer.BroadcastStream(channel, strings.Join(strData, "\n"))
 	}()
 }
 
-func (this *HttpServer) BroadcastEvent(channel string, data string) {
-	if this.wsServer.RoomHasListeners(channel) == false {
+func (h *HttpServer) BroadcastEvent(channel string, data string) {
+	if h.wsServer.RoomHasListeners(channel) == false {
 		return
 	}
-	this.wsServer.BroadcastEvent(channel, data)
+	h.wsServer.BroadcastEvent(channel, data)
 }
 
-func (this *HttpServer) Start(port string) {
+func (h *HttpServer) Start(port string) {
 	c := cors.New(cors.Options{
 		AllowedHeaders:   []string{"X-Requested-With", "Content-Type", "Token", "Authorization", "X-Request-ID"},
 		AllowedOrigins:   []string{"*"},
@@ -82,17 +81,22 @@ func (this *HttpServer) Start(port string) {
 		AllowCredentials: true,
 		// Debug:            true,
 	})
-	go this.wsServer.Run()
-	http.ListenAndServe(":"+port, c.Handler(this.router))
+	go h.wsServer.Run()
+	http.ListenAndServe(":"+port, c.Handler(h.router))
 }
 
 // TODO: add another method that receive an array
-func (this *HttpServer) RegisterMiddlewareAction(method string, route string, reqHandler utils.RequestHandler, middlewares []utils.Middleware) {
+func (h *HttpServer) RegisterMiddlewareAction(method string, route string, reqHandler utils.RequestHandler, middlewares []utils.Middleware) {
 	handler := utils.GetHttpWrapper(reqHandler, middlewares)
-	this.api.HandleFunc(route, handler).Methods(method)
+	h.api.HandleFunc(route, handler).Methods(method)
 }
 
-func (this *HttpServer) RegisterAction(method string, route string, reqHandler utils.RequestHandler) {
+func (h *HttpServer) RegisterAction(method string, route string, reqHandler utils.RequestHandler) {
 	handler := utils.GetHttpWrapper(reqHandler, []utils.Middleware{})
-	this.api.HandleFunc(route, handler).Methods(method)
+	h.api.HandleFunc(route, handler).Methods(method)
 }
+
+// func (h *HttpServer) AddNode(params map[string]string, queryString map[string][]string, bodyJson map[string]interface{}) (string, error) {
+// 	log.Println("REST WORKS POST")
+// 	return "", nil
+// }

@@ -2,8 +2,11 @@ package openai
 
 import (
 	"fmt"
+	"gptapi/internal/jwt"
 	"gptapi/internal/limiter"
+	"gptapi/internal/safe"
 	"gptapi/pkg/enum"
+	"gptapi/pkg/models"
 	"os"
 	"strings"
 	"sync"
@@ -12,26 +15,29 @@ import (
 
 type IGPTClient interface {
 	SetPrompt(string, []string)
-	SetMaxReachedMsg(string)
+	SetRateLimitMsg(string)
 	SendText(string) (string, error)
 }
 
 type GPTManager struct {
-	clients    map[uint64]IGPTClient
-	clientsMap SafeMap
-	apiKeys    []string
-	limiter    *limiter.RedisRateLimiter
-	jhash      *JumpHash
-	mu         *sync.RWMutex
+	clients      map[uint64]IGPTClient
+	cache        models.CacheManager
+	tokenManager *jwt.JWT
+	clientsMap   safe.SafeMap
+	apiKeys      []string
+	limiter      *limiter.RedisRateLimiter
+	jhash        *JumpHash
+	mu           *sync.RWMutex
 }
 
-func NewGPTManager() *GPTManager {
+func NewGPTManager(cache models.CacheManager) *GPTManager {
 	m := &GPTManager{
 		clients: make(map[uint64]IGPTClient),
 		mu:      new(sync.RWMutex),
 	}
-	m.clientsMap = NewSafeMap()
-	m.limiter = limiter.NewRedisRateLimiter("GPT:LIMITER:", 20, time.Minute)
+	m.cache = cache
+	m.clientsMap = safe.NewSafeMap()
+	m.tokenManager = jwt.New(cache, os.Getenv("GPT_JWT_SECRET"))
 	m.loadApiKeys()
 	m.jhash = newJumpHash(len(m.apiKeys), 1)
 	return m
@@ -50,13 +56,38 @@ func (m *GPTManager) getApiKey(key uint64) string {
 	return m.apiKeys[pos]
 }
 
-func (m *GPTManager) requestHandler(clientId uint64) bool {
-	return m.limiter.Allow(clientId)
+func (m *GPTManager) decodeToken(token string) *jwt.TokenPayload {
+	payload, err := m.tokenManager.ValidateToken(token)
+	if err != nil {
+		return nil
+	}
+	return payload
 }
 
-func (m *GPTManager) MergeClient(id uint64, gptType enum.GPTType, historySize int) (IGPTClient, bool) {
-	c, exists := m.clientsMap.merge(fmt.Sprintf(`%d`, id), func(s string) interface{} {
-		c := CreateNewGPTClient(id, m.getApiKey(id), gptType, historySize, m.requestHandler)
+func (m *GPTManager) GenerateToken(identifier string, window, limit int, rate time.Duration) string {
+	payload := map[string]interface{}{
+		"limit":  limit,
+		"rate":   rate,
+		"window": window,
+	}
+	token, err := m.tokenManager.CreateToken(identifier, payload)
+	if err != nil {
+		return ""
+	}
+	return token.Token
+}
+
+func (m *GPTManager) GetClient(token string) (IGPTClient, bool) {
+	payload := m.decodeToken(token)
+	if payload == nil {
+		return nil, false
+	}
+	data := payload.Data
+	limit := int(data["limit"].(float64))
+	window := int(data["window"].(float64))
+	rate := time.Duration(int64(data["rate"].(float64)))
+	c, exists := m.clientsMap.Merge(fmt.Sprintf(`%d`, payload.AccessId), func(s string) interface{} {
+		c := CreateNewGPTClient(payload.AccessId, m.getApiKey(payload.AccessId), enum.GPT_3_5_TURBO, window, limit, rate)
 		return c
 	})
 	return c.(IGPTClient), exists
