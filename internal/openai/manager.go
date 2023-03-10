@@ -7,7 +7,6 @@ import (
 	"gptapi/internal/safe"
 	"gptapi/pkg/enum"
 	"gptapi/pkg/models"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -81,11 +80,10 @@ func (m *GPTManager) GenerateToken(identifier string, accessId uint64, window, l
 func (m *GPTManager) GetClient(token string) (models.IGPTClient, bool) {
 	payload := m.decodeToken(token)
 	if payload == nil {
-		log.Println(token)
 		return nil, false
 	}
-	limit := int(payload.Data["limit"].(float64))
 	window := int(payload.Data["window"].(float64))
+	limit := int(payload.Data["limit"].(float64))
 	rate := time.Duration(int64(payload.Data["rate"].(float64)))
 	apiKey := m.getApiKey(payload.AccessId)
 	id := fmt.Sprintf(`%d`, payload.AccessId)
