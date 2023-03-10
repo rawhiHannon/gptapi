@@ -1,4 +1,4 @@
-package idgen
+package uniqid
 
 import (
 	"time"

@@ -90,12 +90,13 @@ func (m *GPTManager) GetClient(token string) (IGPTClient, bool) {
 		log.Println(token)
 		return nil, false
 	}
-	data := payload.Data
-	limit := int(data["limit"].(float64))
-	window := int(data["window"].(float64))
-	rate := time.Duration(int64(data["rate"].(float64)))
-	c, exists := m.clientsMap.Merge(fmt.Sprintf(`%d`, payload.AccessId), func(s string) interface{} {
-		c := CreateNewGPTClient(payload.AccessId, m.getApiKey(payload.AccessId), m.gptType, window, limit, rate)
+	limit := int(payload.Data["limit"].(float64))
+	window := int(payload.Data["window"].(float64))
+	rate := time.Duration(int64(payload.Data["rate"].(float64)))
+	apiKey := m.getApiKey(payload.AccessId)
+	id := fmt.Sprintf(`%d`, payload.AccessId)
+	c, exists := m.clientsMap.Merge(id, func(s string) interface{} {
+		c := CreateNewGPTClient(payload.AccessId, apiKey, m.gptType, window, limit, rate)
 		return c
 	})
 	return c.(IGPTClient), exists

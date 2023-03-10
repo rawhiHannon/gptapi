@@ -2,7 +2,7 @@ package wsserver
 
 import (
 	"encoding/json"
-	"gptapi/internal/idgen"
+	"gptapi/internal/uniqid"
 	"log"
 	"time"
 
@@ -46,7 +46,7 @@ type Client struct {
 
 func NewClient(conn *websocket.Conn, wsServer *WsServer, token string) *Client {
 	return &Client{
-		ID:       idgen.NextId(),
+		ID:       uniqid.NextId(),
 		Token:    token,
 		conn:     conn,
 		wsServer: wsServer,

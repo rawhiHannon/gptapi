@@ -1,9 +1,9 @@
 package chatapp
 
 import (
-	"gptapi/internal/idgen"
 	"gptapi/internal/openai"
 	"gptapi/internal/storage/redis"
+	"gptapi/internal/uniqid"
 	"gptapi/internal/wsserver"
 	"gptapi/pkg/api/httpserver"
 	"gptapi/pkg/utils"
@@ -59,6 +59,6 @@ func (h *ChatApp) StartAPI(port string) {
 }
 
 func (h *ChatApp) GenerateToken(params map[string]string, queryString map[string][]string, bodyJson map[string]interface{}) (string, error) {
-	token := h.gptManager.GenerateToken("", idgen.NextId(), 10, 4, time.Minute)
+	token := h.gptManager.GenerateToken("", uniqid.NextId(), 10, 4, time.Minute)
 	return token, nil
 }

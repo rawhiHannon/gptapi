@@ -1,14 +1,14 @@
 package limiter
 
 import (
-	"gptapi/internal/idgen"
+	"gptapi/internal/uniqid"
 	"testing"
 	"time"
 )
 
 func TestRedisRateLimiter(t *testing.T) {
 	limiter := NewRedisRateLimiter("test_", 20, 1*time.Minute)
-	key := idgen.NextId()
+	key := uniqid.NextId()
 	for i := 1; i <= 20; i++ {
 		if !limiter.Allow(key) {
 			t.Errorf("allow request failed at attempt %d", i)

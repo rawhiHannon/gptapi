@@ -1,19 +1,16 @@
 package utils
 
 import (
-	"context"
 	_ "encoding/json"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	// "errors"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 
-	"github.com/PullRequestInc/go-gpt3"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 
@@ -161,30 +158,4 @@ func LoadEnv(path string) {
 		log.Fatal("Error loading .env file")
 		os.Exit(1)
 	}
-}
-
-func GetGPTResponse(ctx context.Context, client gpt3.Client, question string) (response string, err error) {
-	sb := strings.Builder{}
-	err = client.CompletionStreamWithEngine(
-		ctx,
-		gpt3.TextDavinci003Engine,
-		gpt3.CompletionRequest{
-			Prompt: []string{
-				question,
-			},
-			MaxTokens:   gpt3.IntPtr(3000),
-			Temperature: gpt3.Float32Ptr(0),
-		},
-		func(resp *gpt3.CompletionResponse) {
-			text := resp.Choices[0].Text
-
-			sb.WriteString(text)
-		},
-	)
-	if err != nil {
-		return "", err
-	}
-	response = sb.String()
-	response = strings.TrimLeft(response, "\n")
-	return response, nil
 }

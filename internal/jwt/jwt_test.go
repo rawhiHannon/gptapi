@@ -2,7 +2,7 @@ package jwt
 
 import (
 	"errors"
-	"gptapi/internal/idgen"
+	"gptapi/internal/uniqid"
 	"log"
 	"testing"
 )
@@ -43,7 +43,7 @@ func TestJWT(t *testing.T) {
 		"name": "John",
 		"age":  30.5,
 	}
-	tokenPayload, err := jwt.CreateToken("test", idgen.NextId(), data)
+	tokenPayload, err := jwt.CreateToken("test", uniqid.NextId(), data)
 	if err != nil {
 		t.Fatalf("Unexpected error creating token: %v", err)
 	}
