@@ -53,8 +53,7 @@ func (t *TelegramBot) init(botKey string) {
 	t.bot = bot
 	t.gptManager = openai.NewGPTManager(t.cache)
 	t.chatMap = safe.NewSafeMap()
-	bot.HandleFunc("{question}", t.questionHandler)
-	bot.ListenAndServe()
+	t.bot.HandleFunc("{question}", t.questionHandler)
 }
 
 func (t *TelegramBot) getChatKey(chatId int64) string {
@@ -93,5 +92,5 @@ func (t *TelegramBot) SetRateLimitMsg(msg string) {
 }
 
 func (t *TelegramBot) Start() {
-	select {}
+	t.bot.ListenAndServe()
 }

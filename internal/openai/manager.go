@@ -52,16 +52,16 @@ func (m *GPTManager) getApiKey(key uint64) string {
 	return m.apiKeys[pos]
 }
 
+func (m *GPTManager) SetType(gptType enum.GPTType) {
+	m.gptType = gptType
+}
+
 func (m *GPTManager) decodeToken(token string) *jwt.TokenPayload {
 	payload, err := m.tokenManager.ValidateToken(token)
 	if err != nil {
 		return nil
 	}
 	return payload
-}
-
-func (m *GPTManager) SetType(gptType enum.GPTType) {
-	m.gptType = gptType
 }
 
 func (m *GPTManager) GenerateToken(identifier string, accessId uint64, window, limit int, rate time.Duration) string {
