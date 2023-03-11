@@ -7,7 +7,7 @@ compile-botapp:
 	GOOS=windows GOARCH=386 go build -o bin/windows-botapp.exe cmd/botapp/main.go
 
 
-build: compile-cli compile-chatapp compile-botapp
+build: compile-chatapp compile-botapp
 
 test:
 	go run tests/main.go
