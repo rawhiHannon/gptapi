@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gptapi/internal/storage/redis"
 	"gptapi/internal/tbot"
+	"gptapi/pkg/utils"
 	"os"
 )
 
@@ -153,9 +154,10 @@ Phrases:
 `
 
 func main() {
+	utils.LoadEnv("")
 	redisHost := os.Getenv("REDIS_HOST")
 	port := os.Getenv("REDIS_PORT")
-	botKey := os.Getenv("TELEGRAM_TEST_TOKEN")
+	botKey := os.Getenv("TELEGRAM_TOKEN")
 	r := redis.NewRedisClient(fmt.Sprintf(`%s:%s`, redisHost, port))
 	bot := tbot.NewTelegramBot(botKey, r)
 	bot.SetPrompt(rule3)
