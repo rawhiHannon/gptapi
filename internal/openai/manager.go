@@ -66,9 +66,9 @@ func (m *GPTManager) SetType(gptType enum.GPTType) {
 
 func (m *GPTManager) GenerateToken(identifier string, accessId uint64, window, limit int, rate time.Duration) string {
 	payload := map[string]interface{}{
+		"window": window,
 		"limit":  limit,
 		"rate":   rate,
-		"window": window,
 	}
 	token, err := m.tokenManager.CreateToken(identifier, accessId, payload)
 	if err != nil {

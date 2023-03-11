@@ -49,14 +49,14 @@ func (h *ChatApp) init() {
 }
 
 func (h *ChatApp) initRestAPI() {
-	h.server.RegisterAction("GET", "/generate", h.GenerateToken)
+	h.server.RegisterAction("GET", "/generate", h.generateToken)
 }
 
 func (h *ChatApp) StartAPI(port string) {
 	h.server.Start(port)
 }
 
-func (h *ChatApp) GenerateToken(params map[string]string, queryString map[string][]string, bodyJson map[string]interface{}) (string, error) {
+func (h *ChatApp) generateToken(params map[string]string, queryString map[string][]string, bodyJson map[string]interface{}) (string, error) {
 	token := h.gptManager.GenerateToken("", uniqid.NextId(), 10, 4, time.Minute)
 	return token, nil
 }

@@ -3,6 +3,7 @@ package botapp
 import (
 	"gptapi/internal/storage/redis"
 	"gptapi/internal/tbot"
+	"gptapi/pkg/api/httpserver"
 )
 
 const rule3 = `
@@ -67,16 +68,36 @@ Phrases:
 `
 
 type BotApp struct {
+	server *httpserver.HttpServer
+	cache  *redis.RedisClient
 }
 
 func NewBotAPP() *BotApp {
 	b := &BotApp{}
+	b.init()
+	b.initRestAPI()
 	return b
 }
 
+func (b *BotApp) init() {
+	b.cache = redis.NewRedisClient("localhost:6379")
+	b.server = httpserver.NewHttpServer()
+}
+
+func (h *BotApp) initRestAPI() {
+	h.server.RegisterAction("GET", "/generate", h.generate)
+}
+
+func (h *BotApp) StartAPI(port string) {
+	h.server.Start(port)
+}
+
 func (b *BotApp) Start() {
-	r := redis.NewRedisClient("localhost:6379")
-	bot := tbot.NewTelegramBot(r)
+	bot := tbot.NewTelegramBot(b.cache)
 	bot.SetPrompt(rule3)
 	bot.Start()
+}
+
+func (h *BotApp) generate(params map[string]string, queryString map[string][]string, bodyJson map[string]interface{}) (string, error) {
+	return "", nil
 }
