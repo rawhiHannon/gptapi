@@ -2,10 +2,10 @@ package wsserver
 
 import (
 	"encoding/json"
+	"gptapi/internal/uniqid"
 	"log"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -34,16 +34,20 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	conn     *websocket.Conn
-	wsServer *WsServer
-	send     chan []byte
-	ID       uuid.UUID `json:"id"`
-	rooms    map[*Room]bool
+	ID              uint64 `json:"id"`
+	Token           string `json:"token"`
+	conn            *websocket.Conn
+	wsServer        *WsServer
+	send            chan []byte
+	messageHandler  func(*Client, *Message)
+	settingsHandler func(*Client, *Message)
+	rooms           map[*Room]bool
 }
 
-func NewClient(conn *websocket.Conn, wsServer *WsServer) *Client {
+func NewClient(conn *websocket.Conn, wsServer *WsServer, token string) *Client {
 	return &Client{
-		ID:       uuid.New(),
+		ID:       uniqid.NextId(),
+		Token:    token,
 		conn:     conn,
 		wsServer: wsServer,
 		send:     make(chan []byte, 256),
@@ -70,7 +74,6 @@ func (c *Client) readPump() {
 		}
 		c.handleNewMessage(jsonMessage)
 	}
-
 }
 
 func (c *Client) writePump() {
@@ -125,23 +128,37 @@ func (c *Client) handleNewMessage(jsonMessage []byte) {
 		log.Printf("Error on unmarshal JSON message %s", err)
 		return
 	}
+	if message.Action == SettingsAction {
+		if c.settingsHandler != nil {
+			c.settingsHandler(c, &message)
+		}
+	} else {
+		if c.messageHandler != nil {
+			c.messageHandler(c, &message)
+		}
+	}
 	message.Sender = c
 	switch message.Action {
 	case SendStreamAction:
 		roomID := message.Target.GetId()
 		if room := c.wsServer.findRoomByID(roomID); room != nil {
-			room.broadcastToAll("", &message)
+			room.broadcastToAll(&message)
 		}
 	case JoinRoomAction:
 		c.handleJoinRoomMessage(message)
+	case ChatAction:
+		c.handleChatMessage(message)
 	case LeaveRoomAction:
 		c.handleLeaveRoomMessage(message)
 	}
 }
 
+func (c *Client) handleChatMessage(message Message) {
+	// TODO:
+}
+
 func (c *Client) handleJoinRoomMessage(message Message) {
 	roomName := message.Message
-	// data := message.Data
 	c.joinRoom(roomName, nil)
 }
 
@@ -173,4 +190,16 @@ func (c *Client) isInRoom(room *Room) bool {
 		return true
 	}
 	return false
+}
+
+func (s *Client) SetOnMessageReceived(handler func(*Client, *Message)) {
+	s.messageHandler = handler
+}
+
+func (s *Client) SetOnSettingsReceived(handler func(*Client, *Message)) {
+	s.settingsHandler = handler
+}
+
+func (c *Client) Send(message *Message) {
+	c.send <- message.encode()
 }
