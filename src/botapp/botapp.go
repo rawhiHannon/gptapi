@@ -1,9 +1,12 @@
 package botapp
 
 import (
+	"fmt"
 	"gptapi/internal/storage/redis"
 	"gptapi/internal/tbot"
 	"gptapi/pkg/api/httpserver"
+	"gptapi/pkg/utils"
+	"os"
 )
 
 const rule3 = `
@@ -80,7 +83,10 @@ func NewBotAPP() *BotApp {
 }
 
 func (b *BotApp) init() {
-	b.cache = redis.NewRedisClient("localhost:6379")
+	utils.LoadEnv("")
+	redisHost := os.Getenv("REDIS_HOST")
+	port := os.Getenv("REDIS_PORT")
+	b.cache = redis.NewRedisClient(fmt.Sprintf(`%s:%s`, redisHost, port))
 	b.server = httpserver.NewHttpServer()
 }
 
@@ -93,7 +99,8 @@ func (h *BotApp) StartAPI(port string) {
 }
 
 func (b *BotApp) Start() {
-	bot := tbot.NewTelegramBot(b.cache)
+	botKey := os.Getenv("TELEGRAM_TEST_TOKEN")
+	bot := tbot.NewTelegramBot(botKey, b.cache)
 	bot.SetPrompt(rule3)
 	bot.Start()
 }

@@ -5,9 +5,7 @@ import (
 	"gptapi/internal/openai"
 	"gptapi/internal/safe"
 	"gptapi/pkg/models"
-	"gptapi/pkg/utils"
 	"log"
-	"os"
 	"time"
 
 	"github.com/yanzay/tbot"
@@ -22,6 +20,7 @@ const (
 
 type TelegramBot struct {
 	gptManager   *openai.GPTManager
+	botKey       string
 	bot          *tbot.Server
 	cache        models.CacheManager
 	chatMap      safe.SafeMap
@@ -32,25 +31,22 @@ type TelegramBot struct {
 	window       int
 }
 
-func NewTelegramBot(cache models.CacheManager) *TelegramBot {
+func NewTelegramBot(botKey string, cache models.CacheManager) *TelegramBot {
 	bot := &TelegramBot{
+		botKey:       botKey,
 		cache:        cache,
 		rateLimitMsg: DEFAULT_MSG,
 		window:       DEFAULT_WINDOW,
 		limit:        DEFAULT_LIMIT,
 		rate:         DEFAULT_RATE,
 	}
-	bot.init()
+	bot.init(botKey)
 	return bot
 }
 
-func (t *TelegramBot) init() {
-	utils.LoadEnv("")
-	parmaName := "TELEGRAM_TEST_TOKEN"
-	if os.Getenv("ENVIROMENT") == "production" {
-		parmaName = "TELEGRAM_TOKEN"
-	}
-	bot, err := tbot.NewServer(os.Getenv(parmaName))
+func (t *TelegramBot) init(botKey string) {
+	t.botKey = botKey
+	bot, err := tbot.NewServer(t.botKey)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,12 +1,14 @@
 package chatapp
 
 import (
+	"fmt"
 	"gptapi/internal/openai"
 	"gptapi/internal/storage/redis"
 	"gptapi/internal/uniqid"
 	"gptapi/internal/wsserver"
 	"gptapi/pkg/api/httpserver"
 	"gptapi/pkg/utils"
+	"os"
 	"time"
 )
 
@@ -26,7 +28,9 @@ func NewChatApp() *ChatApp {
 
 func (h *ChatApp) init() {
 	utils.LoadEnv("")
-	h.cache = redis.NewRedisClient("localhost:6379")
+	redisHost := os.Getenv("REDIS_HOST")
+	port := os.Getenv("REDIS_PORT")
+	h.cache = redis.NewRedisClient(fmt.Sprintf(`%s:%s`, redisHost, port))
 	h.gptManager = openai.NewGPTManager(h.cache)
 	h.server.SetOnClientRegister(func(c *wsserver.Client) {
 		gpt, _ := h.gptManager.GetClient(c.Token)

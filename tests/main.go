@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"gptapi/internal/storage/redis"
 	"gptapi/internal/tbot"
+	"os"
 )
 
 const rule1 = `rules: 
@@ -151,8 +153,11 @@ Phrases:
 `
 
 func main() {
-	r := redis.NewRedisClient("localhost:6379")
-	bot := tbot.NewTelegramBot(r)
+	redisHost := os.Getenv("REDIS_HOST")
+	port := os.Getenv("REDIS_PORT")
+	botKey := os.Getenv("TELEGRAM_TEST_TOKEN")
+	r := redis.NewRedisClient(fmt.Sprintf(`%s:%s`, redisHost, port))
+	bot := tbot.NewTelegramBot(botKey, r)
 	bot.SetPrompt(rule3)
 	bot.Start()
 }
