@@ -15,6 +15,7 @@ import (
 
 type GPTManager struct {
 	clients      map[uint64]models.IGPTClient
+	dalle        *DallE
 	cache        models.CacheManager
 	gptType      enum.GPTType
 	tokenManager *jwt.JWT

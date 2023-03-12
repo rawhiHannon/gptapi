@@ -13,9 +13,9 @@ import (
 
 const (
 	DEFAULT_RATE   = time.Minute
-	DEFAULT_LIMIT  = 4
+	DEFAULT_LIMIT  = 40
 	DEFAULT_WINDOW = 10
-	DEFAULT_MSG    = "Please Subscribe"
+	DEFAULT_MSG    = "ONHOLD"
 )
 
 type TelegramBot struct {
@@ -76,7 +76,7 @@ func (t *TelegramBot) getChat(chatId int64) models.IGPTClient {
 
 func (t *TelegramBot) questionHandler(m *tbot.Message) {
 	question := m.Vars["question"]
-	log.Println(question, m.ChatID)
+	log.Println(question, m.ChatID, m.From)
 	answer := t.getChat(m.ChatID).SendText(question)
 	if answer != "" {
 		m.Reply(answer)

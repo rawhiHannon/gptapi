@@ -26,7 +26,6 @@ type TokenPayload struct {
 	Exists     bool
 	Expire     int64
 	Data       map[string]interface{}
-	Device     string
 }
 
 func New(cache models.CacheManager, secret string) *JWT {
@@ -57,7 +56,6 @@ func (j *JWT) extractTokenMetadata(tokenString string) (*TokenPayload, error) {
 	var ok bool
 	var accessId float64
 	var identifier string
-	var device string
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if ok && token.Valid {
 		accessId, ok = claims["accessId"].(float64)
@@ -77,7 +75,6 @@ func (j *JWT) extractTokenMetadata(tokenString string) (*TokenPayload, error) {
 			Identifier: identifier,
 			Data:       dataMap,
 			Token:      tokenString,
-			Device:     device,
 		}, nil
 	}
 	return nil, err
@@ -125,6 +122,5 @@ func (j *JWT) CreateToken(identifier string, accessId uint64, data map[string]in
 		Exists:     true,
 		Expire:     expire,
 		Data:       data,
-		Device:     "",
 	}, nil
 }

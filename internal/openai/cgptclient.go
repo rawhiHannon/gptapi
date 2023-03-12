@@ -8,10 +8,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
-
-const DEFAULT_MAX_RETRIES = 5
 
 type CGPTMessage struct {
 	Role    string `json:"role"`
@@ -63,8 +62,8 @@ type CGPTClient struct {
 	rateLimitMsg string
 	onHold       bool
 	history      HistoryCache
+	dalleClient  *DallE
 	limiter      *limiter.RedisRateLimiter
-	retries      int
 }
 
 func NewCGPTClient(id uint64, apiKey string, window, limit int, rate time.Duration) *CGPTClient {
@@ -75,8 +74,8 @@ func NewCGPTClient(id uint64, apiKey string, window, limit int, rate time.Durati
 
 func (g *CGPTClient) init(apiKey string, window, limit int, rate time.Duration) {
 	g.apiKey = apiKey
-	g.retries = DEFAULT_MAX_RETRIES
 	g.limiter = limiter.NewRedisRateLimiter(fmt.Sprintf(`GPT:LIMITER:%d:`, g.id), limit, rate)
+	g.dalleClient = NewDallE(g.apiKey, g.id, 10, time.Minute)
 	g.history = HistoryCache{
 		size: window,
 	}
@@ -125,11 +124,12 @@ func (g *CGPTClient) SendText(text string) string {
 		Content: g.prompt,
 	}
 	systemMsg2 := CGPTMessage{
-		Role: "system",
+		Role: "user",
 		Content: `
-		Rules:
-		. جاوب باللهجة الفلسطينية
-		. when you can answer from the phrases then use it, and use one phrase per answer if possible.
+		if user ask you to generate a photo/pic you answer only with, "{{description}}", {description} is what the user asked to generate.
+		Example:
+		user: please generate a pic for a dog running in the rain.
+		answer: {a dog running in the rain}
 		`,
 	}
 	msg := CGPTMessage{
@@ -165,6 +165,10 @@ func (g *CGPTClient) SendText(text string) string {
 		if answer != "" {
 			break
 		}
+	}
+	if len(answer) > 1 && strings.HasPrefix(answer, "{") {
+		res, _ := g.dalleClient.GenPhoto(answer, 1, "512x512")
+		return res[0]
 	}
 	g.history.AddQuestion(text, answer)
 	return answer

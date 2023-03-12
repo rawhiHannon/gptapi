@@ -59,9 +59,6 @@ func TestJWT(t *testing.T) {
 	if tokenPayload.Expire == 0 {
 		t.Errorf("Expected non-zero Expire in token payload")
 	}
-	if tokenPayload.Device != "" {
-		t.Errorf("Expected empty Device in token payload")
-	}
 	if len(tokenPayload.Data) != len(data) {
 		t.Errorf("Expected Data to have %d items, but got %d", len(data), len(tokenPayload.Data))
 	}
