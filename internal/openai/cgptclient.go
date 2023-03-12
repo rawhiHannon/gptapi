@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"gptapi/internal/limiter"
+	"gptapi/pkg/enum"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -118,26 +119,17 @@ func (g *CGPTClient) SetRateLimitMsg(msg string) {
 	g.rateLimitMsg = msg
 }
 
-func (g *CGPTClient) SendText(text string) string {
+func (g *CGPTClient) SendText(text string) (string, enum.AnswerType) {
 	systemMsg := CGPTMessage{
 		Role:    "system",
 		Content: g.prompt,
-	}
-	systemMsg2 := CGPTMessage{
-		Role: "user",
-		Content: `
-		if user ask you to generate a photo/pic you answer only with, "{{description}}", {description} is what the user asked to generate.
-		Example:
-		user: please generate a pic for a dog running in the rain.
-		answer: {a dog running in the rain}
-		`,
 	}
 	msg := CGPTMessage{
 		Role:    "user",
 		Content: text,
 	}
 	messages := make([]CGPTMessage, 0)
-	messages = append(messages, systemMsg, systemMsg2)
+	messages = append(messages, systemMsg)
 	messages = append(messages, g.history.GetMessages()...)
 	messages = append(messages, msg)
 	requestBody := CGPTRequest{
@@ -148,18 +140,18 @@ func (g *CGPTClient) SendText(text string) string {
 	for i := 0; i < MAX_RETRIES; i++ {
 		if g.limiter.Allow(g.id) == false {
 			if g.onHold == true {
-				return ""
+				return "", enum.TEXT_ANSWER
 			} else {
 				g.onHold = true
 				g.history.AddQuestion(text, g.rateLimitMsg)
-				return g.rateLimitMsg
+				return g.rateLimitMsg, enum.TEXT_ANSWER
 			}
 		}
 		cgptResp, err := g.sendRequest(&requestBody)
 		log.Println(cgptResp.Usage)
 		if err != nil {
 			log.Println(err)
-			return ""
+			return "", enum.TEXT_ANSWER
 		}
 		answer = cgptResp.extractAnswer()
 		if answer != "" {
@@ -168,8 +160,9 @@ func (g *CGPTClient) SendText(text string) string {
 	}
 	if len(answer) > 1 && strings.HasPrefix(answer, "{") {
 		res, _ := g.dalleClient.GenPhoto(answer, 1, "512x512")
-		return res[0]
+		log.Println(answer)
+		return res[0], enum.IMAGE_ANSWER
 	}
 	g.history.AddQuestion(text, answer)
-	return answer
+	return answer, enum.TEXT_ANSWER
 }

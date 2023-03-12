@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"fmt"
+	"gptapi/pkg/enum"
 	"log"
 	"strings"
 
@@ -52,7 +53,7 @@ func (g *GPTClient) SetPrompt(prompt string, history []string) {
 	}
 }
 
-func (g *GPTClient) SendText(text string) (response string) {
+func (g *GPTClient) SendText(text string) (string, enum.AnswerType) {
 	sb := strings.Builder{}
 	err := g.client.CompletionStreamWithEngine(
 		g.ctx,
@@ -77,11 +78,11 @@ func (g *GPTClient) SendText(text string) (response string) {
 	)
 	if err != nil {
 		log.Println(err)
-		return ""
+		return "", enum.TEXT_ANSWER
 	}
-	response = sb.String()
+	response := sb.String()
 	response = strings.TrimLeft(response, "\n")
 	g.history = append(g.history, text)
 	g.history = append(g.history, response)
-	return response
+	return response, enum.TEXT_ANSWER
 }

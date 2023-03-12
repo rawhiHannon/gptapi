@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gptapi/internal/openai"
 	"gptapi/internal/safe"
+	"gptapi/pkg/enum"
 	"gptapi/pkg/models"
 	"log"
 	"time"
@@ -77,9 +78,13 @@ func (t *TelegramBot) getChat(chatId int64) models.IGPTClient {
 func (t *TelegramBot) questionHandler(m *tbot.Message) {
 	question := m.Vars["question"]
 	log.Println(question, m.ChatID, m.From)
-	answer := t.getChat(m.ChatID).SendText(question)
+	answer, anserType := t.getChat(m.ChatID).SendText(question)
 	if answer != "" {
-		m.Reply(answer)
+		if anserType == enum.IMAGE_ANSWER {
+			m.ReplyPhoto(answer)
+		} else {
+			m.Reply(answer)
+		}
 	}
 }
 

@@ -42,7 +42,7 @@ func (h *ChatApp) init() {
 			if gpt == nil {
 				return
 			}
-			res := gpt.SendText(m.Message)
+			res, _ := gpt.SendText(m.Message)
 			h.server.Send(c.ID, res)
 		})
 		c.SetOnSettingsReceived(func(c *wsserver.Client, m *wsserver.Message) {

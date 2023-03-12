@@ -13,3 +13,10 @@ const (
 	TLS SMTPType = iota
 	SSL
 )
+
+type AnswerType int
+
+const (
+	TEXT_ANSWER AnswerType = iota
+	IMAGE_ANSWER
+)

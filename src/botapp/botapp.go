@@ -99,7 +99,7 @@ func (h *BotApp) StartAPI(port string) {
 }
 
 func (b *BotApp) Start() {
-	botKey := os.Getenv("TELEGRAM_TOKEN")
+	botKey := os.Getenv("TELEGRAM_TEST_TOKEN")
 	bot := tbot.NewTelegramBot(botKey, b.cache)
 	bot.SetPrompt(rule3)
 	bot.Start()
