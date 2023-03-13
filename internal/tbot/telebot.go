@@ -9,26 +9,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/yanzay/tbot"
+	"gopkg.in/telebot.v3"
 )
 
-const (
-	DEFAULT_RATE   = time.Minute
-	DEFAULT_LIMIT  = 40
-	DEFAULT_WINDOW = 10
-	DEFAULT_MSG    = "ONHOLD"
-)
-
-type ITelegramBot interface {
-	SetPrompt(string)
-	SetRateLimitMsg(string)
-	Start()
-}
-
-type TBot struct {
+type TeleBot struct {
 	gptManager   *openai.GPTManager
 	botKey       string
-	bot          *tbot.Server
+	bot          *telebot.Bot
 	cache        models.CacheManager
 	chatMap      safe.SafeMap
 	prompt       string
@@ -39,8 +26,8 @@ type TBot struct {
 	ready        chan struct{}
 }
 
-func NewTBot(botKey string, cache models.CacheManager) ITelegramBot {
-	bot := &TBot{
+func NewTeleBot(botKey string, cache models.CacheManager) ITelegramBot {
+	bot := &TeleBot{
 		botKey:       botKey,
 		cache:        cache,
 		rateLimitMsg: DEFAULT_MSG,
@@ -53,19 +40,24 @@ func NewTBot(botKey string, cache models.CacheManager) ITelegramBot {
 	return bot
 }
 
-func (t *TBot) init(botKey string) {
+func (t *TeleBot) init(botKey string) {
 	t.botKey = botKey
-	bot, err := tbot.NewServer(t.botKey)
+	pref := telebot.Settings{
+		Token:  t.botKey,
+		Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
+	}
+	b, err := telebot.NewBot(pref)
 	if err != nil {
 		log.Fatal(err)
+		return
 	}
-	t.bot = bot
+	t.bot = b
 	t.gptManager = openai.NewGPTManager(t.cache)
 	t.chatMap = safe.NewSafeMap()
-	t.bot.HandleFunc("{question}", t.questionHandler)
+	t.bot.Handle(telebot.OnText, t.questionHandler)
 }
 
-func (t *TBot) getChatKey(chatId int64) string {
+func (t *TeleBot) getChatKey(chatId int64) string {
 	id := fmt.Sprintf(`%d`, chatId)
 	token, _ := t.chatMap.Merge(id, func(s string) interface{} {
 		return t.gptManager.GenerateToken("bot", uint64(chatId), t.window, t.limit, t.rate)
@@ -73,7 +65,7 @@ func (t *TBot) getChatKey(chatId int64) string {
 	return token.(string)
 }
 
-func (t *TBot) getChat(chatId int64) models.IGPTClient {
+func (t *TeleBot) getChat(chatId int64) models.IGPTClient {
 	token := t.getChatKey(chatId)
 	client, exists := t.gptManager.GetClient(token)
 	if !exists && client != nil {
@@ -83,29 +75,36 @@ func (t *TBot) getChat(chatId int64) models.IGPTClient {
 	return client
 }
 
-func (t *TBot) questionHandler(m *tbot.Message) {
-	question := m.Vars["question"]
-	log.Println(question, m.ChatID, m.From)
-	answers := t.getChat(m.ChatID).SendText(question)
+func (t *TeleBot) questionHandler(c telebot.Context) error {
+	var (
+		user     = c.Sender()
+		question = c.Text()
+	)
+	log.Println(question, user.ID)
+	t.bot.Notify(user, telebot.Typing)
+	answers := t.getChat(user.ID).SendText(question)
+	var err error
 	for _, answer := range answers {
 		if answer.Data != "" {
 			if answer.AnswerType == enum.IMAGE_ANSWER {
-				m.ReplyPhoto(answer.Data)
+				photo := &telebot.Photo{File: telebot.FromURL(answer.Data)}
+				err = c.Send(photo)
 			} else {
-				m.Reply("Click to Open [URL](http://example.com)")
+				err = c.Send(answer.Data)
 			}
 		}
 	}
+	return err
 }
 
-func (t *TBot) SetPrompt(prompt string) {
+func (t *TeleBot) SetPrompt(prompt string) {
 	t.prompt = prompt
 }
 
-func (t *TBot) SetRateLimitMsg(msg string) {
+func (t *TeleBot) SetRateLimitMsg(msg string) {
 	t.rateLimitMsg = msg
 }
 
-func (t *TBot) Start() {
-	t.bot.ListenAndServe()
+func (t *TeleBot) Start() {
+	t.bot.Start()
 }

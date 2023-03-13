@@ -42,8 +42,11 @@ func (h *ChatApp) init() {
 			if gpt == nil {
 				return
 			}
-			res, _ := gpt.SendText(m.Message)
-			h.server.Send(c.ID, res)
+			answers := gpt.SendText(m.Message)
+			if len(answers) == 0 {
+				return
+			}
+			h.server.Send(c.ID, answers[0].Data)
 		})
 		c.SetOnSettingsReceived(func(c *wsserver.Client, m *wsserver.Message) {
 			gpt, _ := h.gptManager.GetClient(c.Token)

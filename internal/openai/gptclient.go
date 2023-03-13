@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gptapi/pkg/enum"
+	"gptapi/pkg/models"
 	"log"
 	"strings"
 
@@ -53,7 +54,7 @@ func (g *GPTClient) SetPrompt(prompt string, history []string) {
 	}
 }
 
-func (g *GPTClient) SendText(text string) (string, enum.AnswerType) {
+func (g *GPTClient) SendText(text string) []*models.Answer {
 	sb := strings.Builder{}
 	err := g.client.CompletionStreamWithEngine(
 		g.ctx,
@@ -78,11 +79,11 @@ func (g *GPTClient) SendText(text string) (string, enum.AnswerType) {
 	)
 	if err != nil {
 		log.Println(err)
-		return "", enum.TEXT_ANSWER
+		return []*models.Answer{models.NewAnswer("", enum.TEXT_ANSWER)}
 	}
 	response := sb.String()
 	response = strings.TrimLeft(response, "\n")
 	g.history = append(g.history, text)
 	g.history = append(g.history, response)
-	return response, enum.TEXT_ANSWER
+	return []*models.Answer{models.NewAnswer(response, enum.TEXT_ANSWER)}
 }
